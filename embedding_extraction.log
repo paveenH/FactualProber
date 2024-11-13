@@ -1,0 +1,283 @@
+2024-11-02 16:24:21,241 - INFO - Loading model: facebook/opt-350m
+2024-11-02 16:24:21,565 - INFO - Tokenizer loaded successfully.
+2024-11-02 16:25:03,022 - INFO - Loading model: facebook/opt-350m
+2024-11-02 16:25:03,803 - INFO - Tokenizer loaded successfully.
+2024-11-02 16:25:07,727 - INFO - Model loaded successfully with dtype: torch.float16
+2024-11-02 16:25:07,729 - INFO - Execution started.
+2024-11-02 16:25:10,124 - INFO - Processed batch 10 of 46
+2024-11-02 16:25:11,589 - INFO - Processed batch 20 of 46
+2024-11-02 16:25:12,891 - INFO - Processed batch 30 of 46
+2024-11-02 16:25:14,181 - INFO - Processed batch 40 of 46
+2024-11-02 16:25:25,802 - INFO - Saved embeddings to embeddings_layers/embeddings_capitals_facebook_opt-350m_rmv_period.csv
+2024-11-02 16:25:29,713 - INFO - Saved embeddings to embeddings_layers/embeddings_generated_facebook_opt-350m_rmv_period.csv
+2024-11-02 16:28:21,592 - INFO - Loading model: facebook/opt-350m
+2024-11-02 16:28:21,867 - INFO - Tokenizer loaded successfully.
+2024-11-02 16:28:22,081 - ERROR - Model initialization error: Using `bitsandbytes` 8-bit quantization requires the latest version of bitsandbytes: `pip install -U bitsandbytes`
+2024-11-02 16:29:54,118 - INFO - Loading model: facebook/opt-350m
+2024-11-02 16:29:54,453 - INFO - Tokenizer loaded successfully.
+2024-11-02 16:29:57,101 - ERROR - Model initialization error: Using `bitsandbytes` 8-bit quantization requires the latest version of bitsandbytes: `pip install -U bitsandbytes`
+2024-11-02 16:30:10,663 - INFO - Loading model: facebook/opt-350m
+2024-11-02 16:30:11,448 - INFO - Tokenizer loaded successfully.
+2024-11-02 16:30:13,964 - ERROR - Model initialization error: Using `bitsandbytes` 8-bit quantization requires the latest version of bitsandbytes: `pip install -U bitsandbytes`
+2024-11-02 16:34:25,794 - INFO - Loading model: facebook/opt-350m
+2024-11-02 16:34:26,126 - INFO - Tokenizer loaded successfully.
+2024-11-02 16:36:32,310 - INFO - Using MPS device
+2024-11-02 16:36:32,312 - INFO - Execution started.
+2024-11-02 16:36:38,770 - INFO - New best validation accuracy: 0.4726 at epoch 1
+2024-11-02 16:36:39,175 - INFO - New best validation accuracy: 0.6575 at epoch 2
+2024-11-02 16:36:40,378 - INFO - New best validation accuracy: 0.7945 at epoch 5
+2024-11-02 16:36:40,459 - INFO - Trained model saved to probes_layers/facebook_opt-350m_all-cons.pt
+2024-11-02 16:36:40,466 - INFO - Execution completed.
+2024-11-02 16:37:02,114 - INFO - Loading model: facebook/opt-350m
+2024-11-02 16:37:02,386 - INFO - Tokenizer loaded successfully.
+2024-11-02 16:37:27,860 - INFO - Loading model: facebook/opt-350m
+2024-11-02 16:37:28,568 - INFO - Tokenizer loaded successfully.
+2024-11-02 16:37:30,008 - INFO - Model loaded successfully with FP16 precision.
+2024-11-02 16:37:30,010 - INFO - Execution started.
+2024-11-02 16:37:31,535 - INFO - Processed batch 10 of 46
+2024-11-02 16:37:32,910 - INFO - Processed batch 20 of 46
+2024-11-02 16:37:34,204 - INFO - Processed batch 30 of 46
+2024-11-02 16:37:35,516 - INFO - Processed batch 40 of 46
+2024-11-02 16:37:47,166 - INFO - Saved embeddings to embeddings_layers/embeddings_capitals_facebook_opt-350m_rmv_period.csv
+2024-11-02 16:37:50,931 - INFO - Saved embeddings to embeddings_layers/embeddings_generated_facebook_opt-350m_rmv_period.csv
+2024-11-02 16:59:21,378 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 16:59:21,828 - INFO - Tokenizer loaded successfully.
+2024-11-02 16:59:44,925 - INFO - Model loaded successfully with FP16 precision.
+2024-11-02 16:59:44,926 - INFO - Execution started.
+2024-11-02 16:59:49,520 - INFO - Processed batch 10 of 46
+2024-11-02 16:59:52,979 - INFO - Processed batch 20 of 46
+2024-11-02 16:59:56,618 - INFO - Processed batch 30 of 46
+2024-11-02 16:59:59,928 - INFO - Processed batch 40 of 46
+2024-11-02 17:00:18,700 - INFO - Saved embeddings to embeddings_layers/embeddings_capitals_meta-llama_Llama-3.2-1B-Instruct_rmv_period.csv
+2024-11-02 17:00:27,305 - INFO - Saved embeddings to embeddings_layers/embeddings_generated_meta-llama_Llama-3.2-1B-Instruct_rmv_period.csv
+2024-11-02 17:00:42,329 - INFO - Using MPS device
+2024-11-02 17:00:42,333 - INFO - Execution started.
+2024-11-02 17:00:53,984 - INFO - New best validation accuracy: 0.8288 at epoch 1
+2024-11-02 17:00:54,986 - INFO - New best validation accuracy: 0.9178 at epoch 2
+2024-11-02 17:00:57,969 - INFO - New best validation accuracy: 0.9384 at epoch 5
+2024-11-02 17:00:58,208 - INFO - Trained model saved to probes_layers/meta-llama_Llama-3.2-1B-Instruct_all-conj.pt
+2024-11-02 17:00:58,214 - INFO - Execution completed.
+2024-11-02 17:02:05,537 - INFO - Using MPS device
+2024-11-02 17:02:05,541 - INFO - Execution started.
+2024-11-02 17:02:36,151 - INFO - Using MPS device
+2024-11-02 17:02:36,152 - INFO - Execution started.
+2024-11-02 17:02:46,140 - INFO - New best validation accuracy: 0.8288 at epoch 1
+2024-11-02 17:02:47,084 - INFO - New best validation accuracy: 0.9178 at epoch 2
+2024-11-02 17:02:49,966 - INFO - New best validation accuracy: 0.9384 at epoch 5
+2024-11-02 17:02:50,125 - INFO - Trained model saved to probes_layers/meta-llama_Llama-3.2-1B-Instruct_all-conj.pt
+2024-11-02 17:02:50,128 - INFO - Execution completed.
+2024-11-02 17:03:08,509 - INFO - Using MPS device
+2024-11-02 17:03:08,510 - INFO - Execution started.
+2024-11-02 17:03:19,818 - INFO - New best validation accuracy: 0.8176 at epoch 1
+2024-11-02 17:03:20,945 - INFO - New best validation accuracy: 0.8706 at epoch 2
+2024-11-02 17:03:22,093 - INFO - New best validation accuracy: 0.8765 at epoch 3
+2024-11-02 17:03:23,235 - INFO - New best validation accuracy: 0.9059 at epoch 4
+2024-11-02 17:03:24,887 - INFO - Trained model saved to probes_layers/meta-llama_Llama-3.2-1B-Instruct_all-conj.pt
+2024-11-02 17:03:24,888 - INFO - Execution completed.
+2024-11-02 17:31:33,927 - INFO - Using Apple MPS device
+2024-11-02 17:31:33,930 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 17:31:34,366 - INFO - Tokenizer loaded successfully.
+2024-11-02 17:31:40,960 - INFO - Model loaded successfully with FP16 precision.
+2024-11-02 17:32:02,535 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 17:32:03,321 - INFO - Tokenizer loaded successfully.
+2024-11-02 17:32:06,265 - INFO - Model loaded successfully with FP16 precision.
+2024-11-02 17:32:06,266 - INFO - Execution started.
+2024-11-02 17:32:10,245 - INFO - Processed batch 10 of 313
+2024-11-02 17:32:13,668 - INFO - Processed batch 20 of 313
+2024-11-02 17:32:17,033 - INFO - Processed batch 30 of 313
+2024-11-02 17:32:20,331 - INFO - Processed batch 40 of 313
+2024-11-02 17:32:23,735 - INFO - Processed batch 50 of 313
+2024-11-02 17:32:27,218 - INFO - Processed batch 60 of 313
+2024-11-02 17:32:30,519 - INFO - Processed batch 70 of 313
+2024-11-02 17:32:34,093 - INFO - Processed batch 80 of 313
+2024-11-02 17:32:37,714 - INFO - Processed batch 90 of 313
+2024-11-02 17:32:41,307 - INFO - Processed batch 100 of 313
+2024-11-02 17:32:44,800 - INFO - Processed batch 110 of 313
+2024-11-02 17:32:48,051 - INFO - Processed batch 120 of 313
+2024-11-02 17:32:51,393 - INFO - Processed batch 130 of 313
+2024-11-02 17:32:55,229 - INFO - Processed batch 140 of 313
+2024-11-02 17:32:58,639 - INFO - Processed batch 150 of 313
+2024-11-02 17:33:01,977 - INFO - Processed batch 160 of 313
+2024-11-02 17:33:05,464 - INFO - Processed batch 170 of 313
+2024-11-02 17:33:08,851 - INFO - Processed batch 180 of 313
+2024-11-02 17:33:12,249 - INFO - Processed batch 190 of 313
+2024-11-02 17:33:15,771 - INFO - Processed batch 200 of 313
+2024-11-02 17:33:19,376 - INFO - Processed batch 210 of 313
+2024-11-02 17:33:22,550 - INFO - Processed batch 220 of 313
+2024-11-02 17:33:26,018 - INFO - Processed batch 230 of 313
+2024-11-02 17:33:29,433 - INFO - Processed batch 240 of 313
+2024-11-02 17:33:32,808 - INFO - Processed batch 250 of 313
+2024-11-02 17:33:36,442 - INFO - Processed batch 260 of 313
+2024-11-02 17:33:39,939 - INFO - Processed batch 270 of 313
+2024-11-02 17:33:43,247 - INFO - Processed batch 280 of 313
+2024-11-02 17:33:46,617 - INFO - Processed batch 290 of 313
+2024-11-02 17:33:56,845 - INFO - Processed batch 300 of 313
+2024-11-02 17:34:00,560 - INFO - Processed batch 310 of 313
+2024-11-02 17:36:04,091 - INFO - Saved embeddings to embeddings_layers/embeddings_cities_meta-llama_Llama-3.2-1B-Instruct_rmv_period.csv
+2024-11-02 17:36:56,272 - INFO - Using MPS device
+2024-11-02 17:36:56,275 - INFO - Execution started.
+2024-11-02 17:38:40,115 - INFO - New best validation accuracy: 0.8786 at epoch 1
+2024-11-02 17:38:47,569 - INFO - New best validation accuracy: 0.8821 at epoch 2
+2024-11-02 17:39:02,509 - INFO - New best validation accuracy: 0.8906 at epoch 4
+2024-11-02 17:39:11,148 - INFO - Trained model saved to probes_layers/meta-llama_Llama-3.2-1B-Instruct_all-conj.pt
+2024-11-02 17:39:11,194 - INFO - Execution completed.
+2024-11-02 17:50:52,697 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 17:50:53,126 - INFO - Tokenizer loaded successfully.
+2024-11-02 17:51:57,902 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 17:51:58,326 - INFO - Tokenizer loaded successfully.
+2024-11-02 17:52:50,629 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 17:52:51,061 - INFO - Tokenizer loaded successfully.
+2024-11-02 17:53:41,098 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 17:53:41,911 - INFO - Tokenizer loaded successfully.
+2024-11-02 18:02:45,750 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 18:02:46,195 - INFO - Tokenizer loaded successfully.
+2024-11-02 18:02:51,902 - INFO - Model loaded successfully with FP16 precision.
+2024-11-02 18:02:51,903 - INFO - Execution started.
+2024-11-02 18:02:55,940 - INFO - Processed batch 10 of 46
+2024-11-02 18:02:59,637 - INFO - Processed batch 20 of 46
+2024-11-02 18:03:03,503 - INFO - Processed batch 30 of 46
+2024-11-02 18:03:07,105 - INFO - Processed batch 40 of 46
+2024-11-02 18:03:29,115 - INFO - Saved embeddings to embeddings_layers/embeddings_capitals_meta-llama_Llama-3.2-1B-Instruct_rmv_period.csv
+2024-11-02 18:09:47,089 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 18:09:47,508 - INFO - Tokenizer loaded successfully.
+2024-11-02 18:09:50,588 - INFO - Model loaded successfully with FP16 precision.
+2024-11-02 18:09:50,589 - INFO - Execution started.
+2024-11-02 18:09:53,964 - INFO - Processed batch 10 of 46
+2024-11-02 18:09:57,403 - INFO - Processed batch 20 of 46
+2024-11-02 18:10:01,024 - INFO - Processed batch 30 of 46
+2024-11-02 18:10:04,448 - INFO - Processed batch 40 of 46
+2024-11-02 18:10:41,885 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 18:10:42,615 - INFO - Tokenizer loaded successfully.
+2024-11-02 18:10:45,735 - INFO - Model loaded successfully with FP16 precision.
+2024-11-02 18:10:45,736 - INFO - Execution started.
+2024-11-02 18:10:49,140 - INFO - Processed batch 10 of 46
+2024-11-02 18:10:52,631 - INFO - Processed batch 20 of 46
+2024-11-02 18:10:56,201 - INFO - Processed batch 30 of 46
+2024-11-02 18:10:59,611 - INFO - Processed batch 40 of 46
+2024-11-02 18:12:10,051 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 18:12:10,467 - INFO - Tokenizer loaded successfully.
+2024-11-02 18:12:14,225 - INFO - Model loaded successfully with FP16 precision.
+2024-11-02 18:12:14,227 - INFO - Execution started.
+2024-11-02 18:12:17,730 - INFO - Processed batch 10 of 46
+2024-11-02 18:12:21,191 - INFO - Processed batch 20 of 46
+2024-11-02 18:12:24,755 - INFO - Processed batch 30 of 46
+2024-11-02 18:12:28,140 - INFO - Processed batch 40 of 46
+2024-11-02 18:14:04,245 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-02 18:14:04,690 - INFO - Tokenizer loaded successfully.
+2024-11-02 18:14:09,291 - INFO - Model loaded successfully with FP16 precision.
+2024-11-02 18:14:09,292 - INFO - Execution started.
+2024-11-02 18:14:13,030 - INFO - Processed batch 10 of 46
+2024-11-02 18:14:16,508 - INFO - Processed batch 20 of 46
+2024-11-02 18:14:20,131 - INFO - Processed batch 30 of 46
+2024-11-02 18:14:23,516 - INFO - Processed batch 40 of 46
+2024-11-02 18:14:26,482 - INFO - Saved embeddings to embeddings_layers/embeddings_capitals_meta-llama_Llama-3.2-1B-Instruct.npy
+2024-11-03 10:37:22,511 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-03 10:37:22,970 - INFO - Tokenizer loaded successfully.
+2024-11-03 10:37:30,158 - INFO - Model loaded successfully with FP16 precision.
+2024-11-03 10:37:30,159 - INFO - Execution started.
+2024-11-03 10:37:33,921 - INFO - Processed batch 10 of 46
+2024-11-03 10:37:37,387 - INFO - Processed batch 20 of 46
+2024-11-03 10:37:41,010 - INFO - Processed batch 30 of 46
+2024-11-03 10:37:44,334 - INFO - Processed batch 40 of 46
+2024-11-03 10:38:19,975 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-03 10:38:20,384 - INFO - Tokenizer loaded successfully.
+2024-11-03 10:38:23,062 - INFO - Model loaded successfully with FP16 precision.
+2024-11-03 10:38:23,063 - INFO - Execution started.
+2024-11-03 10:38:26,364 - INFO - Processed batch 10 of 46
+2024-11-03 10:38:29,740 - INFO - Processed batch 20 of 46
+2024-11-03 10:38:33,244 - INFO - Processed batch 30 of 46
+2024-11-03 10:38:36,582 - INFO - Processed batch 40 of 46
+2024-11-03 11:28:24,954 - INFO - Using MPS device
+2024-11-03 11:28:28,054 - INFO - Execution started.
+2024-11-03 11:29:39,109 - INFO - Combined dataset has 1458 samples.
+2024-11-03 11:29:39,481 - INFO - Combined embeddings shape: (1458, 16, 2048)
+2024-11-03 11:30:25,262 - INFO - New best validation accuracy: 0.8288 at epoch 1
+2024-11-03 11:30:26,210 - INFO - New best validation accuracy: 0.9178 at epoch 2
+2024-11-03 11:30:29,048 - INFO - New best validation accuracy: 0.9384 at epoch 5
+2024-11-03 11:30:36,746 - INFO - Trained model saved to probes_layers/meta-llama_Llama-3.2-1B-Instruct_all-conj.pt
+2024-11-03 11:30:39,326 - INFO - Execution completed.
+2024-11-03 11:30:45,224 - INFO - Using MPS device
+2024-11-03 11:30:45,226 - INFO - Execution started.
+2024-11-03 11:30:45,242 - INFO - Combined dataset has 1458 samples.
+2024-11-03 11:30:45,242 - INFO - Combined embeddings shape: (1458, 16, 2048)
+2024-11-03 11:30:46,312 - INFO - New best validation accuracy: 0.8288 at epoch 1
+2024-11-03 11:30:47,242 - INFO - New best validation accuracy: 0.9178 at epoch 2
+2024-11-03 11:30:50,030 - INFO - New best validation accuracy: 0.9384 at epoch 5
+2024-11-03 11:30:50,158 - INFO - Trained model saved to probes_layers/meta-llama_Llama-3.2-1B-Instruct_all-conj.pt
+2024-11-03 11:30:50,159 - INFO - Execution completed.
+2024-11-03 11:32:23,672 - ERROR - Invalid JSON in config file.
+2024-11-03 11:32:36,460 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-03 11:32:37,363 - INFO - Tokenizer loaded successfully.
+2024-11-03 11:32:44,459 - INFO - Model loaded successfully with FP16 precision.
+2024-11-03 11:32:44,461 - INFO - Execution started.
+2024-11-03 11:32:48,149 - INFO - Processed batch 10 of 46
+2024-11-03 11:32:51,601 - INFO - Processed batch 20 of 46
+2024-11-03 11:32:55,191 - INFO - Processed batch 30 of 46
+2024-11-03 11:32:58,507 - INFO - Processed batch 40 of 46
+2024-11-03 11:33:28,229 - INFO - Using MPS device
+2024-11-03 11:33:28,230 - INFO - Execution started.
+2024-11-03 11:33:28,269 - INFO - Combined dataset has 1703 samples.
+2024-11-03 11:33:28,269 - INFO - Combined embeddings shape: (1703, 16, 2048)
+2024-11-03 11:33:29,702 - INFO - New best validation accuracy: 0.8176 at epoch 1
+2024-11-03 11:33:30,787 - INFO - New best validation accuracy: 0.8706 at epoch 2
+2024-11-03 11:33:31,895 - INFO - New best validation accuracy: 0.8765 at epoch 3
+2024-11-03 11:33:33,024 - INFO - New best validation accuracy: 0.9059 at epoch 4
+2024-11-03 11:33:34,322 - INFO - Trained model saved to probes_layers/meta-llama_Llama-3.2-1B-Instruct_all-conj.pt
+2024-11-03 11:33:34,323 - INFO - Execution completed.
+2024-11-03 11:34:34,171 - INFO - Loading model: meta-llama/Llama-3.2-1B-Instruct
+2024-11-03 11:34:34,636 - INFO - Tokenizer loaded successfully.
+2024-11-03 11:34:38,442 - INFO - Model loaded successfully with FP16 precision.
+2024-11-03 11:34:38,443 - INFO - Execution started.
+2024-11-03 11:34:41,989 - INFO - Processed batch 10 of 313
+2024-11-03 11:34:45,381 - INFO - Processed batch 20 of 313
+2024-11-03 11:34:48,747 - INFO - Processed batch 30 of 313
+2024-11-03 11:34:52,038 - INFO - Processed batch 40 of 313
+2024-11-03 11:34:55,411 - INFO - Processed batch 50 of 313
+2024-11-03 11:34:58,712 - INFO - Processed batch 60 of 313
+2024-11-03 11:35:01,997 - INFO - Processed batch 70 of 313
+2024-11-03 11:35:05,483 - INFO - Processed batch 80 of 313
+2024-11-03 11:35:09,003 - INFO - Processed batch 90 of 313
+2024-11-03 11:35:12,592 - INFO - Processed batch 100 of 313
+2024-11-03 11:35:16,098 - INFO - Processed batch 110 of 313
+2024-11-03 11:35:19,356 - INFO - Processed batch 120 of 313
+2024-11-03 11:35:22,701 - INFO - Processed batch 130 of 313
+2024-11-03 11:35:26,478 - INFO - Processed batch 140 of 313
+2024-11-03 11:35:29,888 - INFO - Processed batch 150 of 313
+2024-11-03 11:35:33,242 - INFO - Processed batch 160 of 313
+2024-11-03 11:35:36,746 - INFO - Processed batch 170 of 313
+2024-11-03 11:35:40,215 - INFO - Processed batch 180 of 313
+2024-11-03 11:35:43,682 - INFO - Processed batch 190 of 313
+2024-11-03 11:35:47,145 - INFO - Processed batch 200 of 313
+2024-11-03 11:35:50,816 - INFO - Processed batch 210 of 313
+2024-11-03 11:35:53,997 - INFO - Processed batch 220 of 313
+2024-11-03 11:35:57,467 - INFO - Processed batch 230 of 313
+2024-11-03 11:36:00,899 - INFO - Processed batch 240 of 313
+2024-11-03 11:36:04,193 - INFO - Processed batch 250 of 313
+2024-11-03 11:36:07,845 - INFO - Processed batch 260 of 313
+2024-11-03 11:36:11,330 - INFO - Processed batch 270 of 313
+2024-11-03 11:36:14,676 - INFO - Processed batch 280 of 313
+2024-11-03 11:36:18,020 - INFO - Processed batch 290 of 313
+2024-11-03 11:36:21,565 - INFO - Processed batch 300 of 313
+2024-11-03 11:36:25,017 - INFO - Processed batch 310 of 313
+2024-11-03 11:36:49,088 - INFO - Processed batch 10 of 20
+2024-11-03 11:36:54,258 - INFO - Processed batch 20 of 20
+2024-11-03 11:36:59,316 - INFO - Processed batch 10 of 30
+2024-11-03 11:37:04,185 - INFO - Processed batch 20 of 30
+2024-11-03 11:37:08,725 - INFO - Processed batch 30 of 30
+2024-11-03 11:37:15,099 - INFO - Processed batch 10 of 32
+2024-11-03 11:37:21,257 - INFO - Processed batch 20 of 32
+2024-11-03 11:37:26,810 - INFO - Processed batch 30 of 32
+2024-11-03 11:37:35,161 - INFO - Processed batch 10 of 38
+2024-11-03 11:37:43,588 - INFO - Processed batch 20 of 38
+2024-11-03 11:37:51,467 - INFO - Processed batch 30 of 38
+2024-11-03 11:38:01,577 - INFO - Processed batch 10 of 28
+2024-11-03 11:38:05,269 - INFO - Processed batch 20 of 28
+2024-11-03 11:38:47,104 - INFO - Using MPS device
+2024-11-03 11:38:47,105 - INFO - Execution started.
+2024-11-03 11:38:48,888 - INFO - Combined dataset has 14626 samples.
+2024-11-03 11:38:48,888 - INFO - Combined embeddings shape: (14626, 16, 2048)
+2024-11-03 11:39:00,769 - INFO - New best validation accuracy: 0.8319 at epoch 1
+2024-11-03 11:39:19,627 - INFO - New best validation accuracy: 0.8360 at epoch 3
+2024-11-03 11:39:28,978 - INFO - New best validation accuracy: 0.8373 at epoch 4
+2024-11-03 11:39:39,156 - INFO - Trained model saved to probes_layers/meta-llama_Llama-3.2-1B-Instruct_all-conj.pt
+2024-11-03 11:39:39,184 - INFO - Execution completed.
