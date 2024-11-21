@@ -7,19 +7,21 @@ Created on Wed Oct 23 16:45:09 2024
 """
 
 import os
+import sys
+from pathlib import Path
+import logging
+import json
+import argparse
+
 import pandas as pd
 import numpy as np
+from copy import deepcopy
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_curve, auc, accuracy_score
+
 import torch
 import torch.nn as nn
-from sklearn.metrics import roc_curve, auc, accuracy_score
 from torch.utils.data import DataLoader, TensorDataset
-from pathlib import Path
-import json
-import logging
-import sys
-import argparse
-from sklearn.model_selection import train_test_split
-from copy import deepcopy
 
 from model import AttentionMLP
 from utils import load_config, get_free_gpu, load_data
@@ -103,7 +105,7 @@ def save_threshold(threshold_file, probe_name, threshold_value):
         sys.exit(1)
 
 
-def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, epochs=5, batch_size=32, learning_rate=0.001):
+def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, epochs=15, batch_size=32, learning_rate=0.001):
     """Train the model and evaluate on validation set after each epoch."""
     # Prepare training data
     train_embeddings_tensor = torch.tensor(train_embeddings, dtype=torch.float32)
