@@ -358,7 +358,7 @@ def main():
 
 
 if __name__ == "__main__":
-    os.environ["HF_HOME"] = "/data1/cache/d12922004"
+    os.environ["HF_HOME"] = "/data2/cache/d12922004"
 
     # Set up logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", filename="embedding_extraction.log")
