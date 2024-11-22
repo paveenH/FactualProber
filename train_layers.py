@@ -12,6 +12,7 @@ from pathlib import Path
 import logging
 import json
 import argparse
+import time
 
 import pandas as pd
 import numpy as np
@@ -68,8 +69,10 @@ def verify_npy_file(npy_file_path, logger=None):
 def load_embeddings(npy_file_path, logger):
     try:
         logger.info(f"Starting to load embeddings from {npy_file_path}")
+        start_time = time.time()
         embeddings = np.load(npy_file_path, mmap_mode='r')
-        logger.info(f"Embeddings shape: {embeddings.shape}")
+        load_time = time.time() - start_time
+        logger.info(f"Loaded embeddings from {npy_file_path} in {load_time:.2f} seconds. Shape: {embeddings.shape}")
         return embeddings
     except Exception as e:
         logger.error(f"Error loading embeddings from {npy_file_path}: {e}")
@@ -77,15 +80,16 @@ def load_embeddings(npy_file_path, logger):
 
 def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_false, embds_path, sanitized_model_name, logger):
     """
-    Load datasets and their corresponding embeddings using memory mapping.
+    Load datasets and their corresponding embeddings using preallocated memory.
     """
     datasets = []
     embeddings_list = []
-    
+    total_samples = 0
+    dtype = None  # To store the dtype of embeddings
+
+    # First pass: Load datasets and embeddings, verify, and accumulate total samples
     for dataset_name in dataset_names: 
         df = load_data(dataset_path, dataset_name, true_false)
-        
-        # Read embeddings with memory mapping
         npy_file = embds_path / f"embeddings_{dataset_name}_{sanitized_model_name}.npy"
         embeddings = load_embeddings(npy_file, logger)
         
@@ -94,7 +98,14 @@ def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_fal
             continue
         
         if len(df) != embeddings.shape[0]:
-            logger.error(f"Number of embeddings ({embeddings.shape[0]}) does not match number of rows in {dataset_name} ({len(df)}).")
+            logger.error(f"Number of embeddings ({embeddings.shape[0]}) does not match number of rows in {dataset_name} ({len(df)}). Skipping.")
+            continue
+        
+        if dtype is None:
+            dtype = embeddings.dtype
+            logger.info(f"Using dtype {dtype} for combined embeddings.")
+        elif dtype != embeddings.dtype:
+            logger.error(f"Data type mismatch for dataset {dataset_name}. Expected {dtype}, got {embeddings.dtype}. Skipping.")
             continue
         
         if remove_period:
@@ -102,21 +113,36 @@ def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_fal
             
         datasets.append(df)
         embeddings_list.append(embeddings)
-    
+        total_samples += embeddings.shape[0]
+        logger.info(f"Accumulated {total_samples} samples so far.")
+
     if not datasets or not embeddings_list:
         logger.error("No valid datasets and embeddings loaded.")
         sys.exit(1)
-    
-    combined_dataset = pd.concat(datasets, ignore_index=True)
-    
-    # Concatenate embeddings using memory mapping
+
+    # Preallocate combined_embeddings array
     try:
-        logger.info("Starting to concatenate embeddings.")
-        combined_embeddings = np.concatenate([embeddings[:] for embeddings in embeddings_list], axis=0)
+        logger.info(f"Preallocating combined_embeddings array with shape ({total_samples}, {embeddings.shape[1]}, {embeddings.shape[2]}) and dtype {dtype}.")
+        combined_embeddings = np.empty((total_samples, embeddings.shape[1], embeddings.shape[2]), dtype=dtype)
+    except Exception as e:
+        logger.error(f"Error preallocating combined_embeddings array: {e}")
+        sys.exit(1)
+    
+    # Second pass: Copy embeddings into preallocated array
+    start_idx = 0
+    for embeddings in embeddings_list:
+        end_idx = start_idx + embeddings.shape[0]
+        combined_embeddings[start_idx:end_idx] = embeddings[:]
+        logger.info(f"Copied embeddings from index {start_idx} to {end_idx}.")
+        start_idx = end_idx
+
+    # Concatenate datasets
+    try:
+        combined_dataset = pd.concat(datasets, ignore_index=True)
         logger.info(f"Combined dataset has {len(combined_dataset)} samples.")
         logger.info(f"Combined embeddings shape: {combined_embeddings.shape}")
     except Exception as e:
-        logger.error(f"Error concatenating embeddings: {e}")
+        logger.error(f"Error concatenating datasets: {e}")
         sys.exit(1)
         
     return combined_dataset, combined_embeddings
@@ -194,6 +220,7 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
         val_preds = (val_outputs_cat >= 0.5).astype(int)
         val_accuracy = accuracy_score(val_labels_cat, val_preds)
         print(f", Validation Accuracy: {val_accuracy:.4f}")
+        logging.info(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_epoch_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
 
         # Save the model if it has the best validation accuracy so far
         if val_accuracy > best_val_accuracy:
@@ -362,9 +389,11 @@ def main():
 
     # Compute ROC AUC on validation set
     val_roc_auc, val_fpr, val_tpr, val_thresholds = compute_roc_auc(val_true_flat, val_probs_flat)
+    logger.info(f"Validation ROC AUC: {val_roc_auc:.4f}")
 
     # Find optimal threshold
     optimal_threshold = find_optimal_threshold(val_fpr, val_tpr, val_thresholds)
+    logger.info(f"Optimal threshold found: {optimal_threshold:.4f}")
 
     # Convert optimal_threshold to native Python float
     optimal_threshold_value = float(optimal_threshold)
@@ -383,10 +412,10 @@ def main():
     test_pred_labels = (test_probs_flat >= optimal_threshold_value).astype(int)
     test_accuracy = accuracy_score(test_true_flat, test_pred_labels)
     test_roc_auc, _, _, _ = compute_roc_auc(test_true_flat, test_probs_flat)
+    logger.info(f"Test Accuracy: {test_accuracy:.4f}, Test AUC: {test_roc_auc:.4f}, Optimal Threshold: {optimal_threshold_value:.4f}")
 
     # Print results
     print(f"Test Accuracy: {test_accuracy:.4f}, Test AUC: {test_roc_auc:.4f}, Optimal Threshold: {optimal_threshold_value:.4f}")
-    logger.info(f"Test Accuracy: {test_accuracy:.4f}, Test AUC: {test_roc_auc:.4f}, Optimal Threshold: {optimal_threshold_value:.4f}")
 
     # Save the trained model
     if save_probes:
@@ -398,7 +427,7 @@ def main():
     # Save test predictions and probabilities
     test_dataset_copy = test_dataset.copy()
 
-    # Remove the 'embeddings' column
+    # Remove the 'embeddings' column if it exists
     if "embeddings" in test_dataset_copy.columns:
         test_dataset_copy = test_dataset_copy.drop(columns=["embeddings"])
 
