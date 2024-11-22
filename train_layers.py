@@ -209,6 +209,7 @@ def evaluate_model(model, test_embeddings, test_labels, batch_size=32):
 
 def main():
     # Set up logging
+    print("start")
     logging.basicConfig(filename="classification.log", level=logging.INFO,format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     logger = logging.getLogger(__name__)
     logger.info("Execution started.")
