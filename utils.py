@@ -109,7 +109,7 @@ def get_free_gpu(cuda_available: bool):
         return None
 
 
-def init_model(model_name: str, token: str, use_fp: int = 16):
+def init_model(model_name: str, use_fp: int = 16):
     """
     Initialize the model and tokenizer with automatic device mapping and specified precision.
     Supports both OPT and Llama models.
@@ -129,7 +129,6 @@ def init_model(model_name: str, token: str, use_fp: int = 16):
     # Load the tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
         model_name, 
-        token=token, 
         trust_remote_code=is_llama)
     logging.info("Tokenizer loaded successfully.")
 
@@ -142,7 +141,6 @@ def init_model(model_name: str, token: str, use_fp: int = 16):
             model_name, 
             device_map="auto", 
             torch_dtype=torch.float16, 
-            token=token, 
             trust_remote_code=is_llama
         )
         logging.info("Model loaded successfully with FP16 precision.")
@@ -152,7 +150,6 @@ def init_model(model_name: str, token: str, use_fp: int = 16):
     #         model_name,
     #         device_map="auto",
     #         quantization_config=quantization_config,
-    #         token=token, 
     #         trust_remote_code=is_llama
     #         )
     #     logging.info("Model loaded successfully with 8-bit quantization.")
@@ -161,7 +158,6 @@ def init_model(model_name: str, token: str, use_fp: int = 16):
             model_name, 
             device_map="auto", 
             torch_dtype=torch.float32, 
-            use_auth_token=token, 
             trust_remote_code=is_llama
         )
         logging.info("Model loaded successfully with FP32 precision.")
