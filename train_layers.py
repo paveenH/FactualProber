@@ -123,7 +123,10 @@ def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_fal
     # Preallocate combined_embeddings array
     try:
         logger.info(f"Preallocating combined_embeddings array with shape ({total_samples}, {embeddings.shape[1]}, {embeddings.shape[2]}) and dtype {dtype}.")
+        start_time = time.time()
         combined_embeddings = np.empty((total_samples, embeddings.shape[1], embeddings.shape[2]), dtype=dtype)
+        prealloc_time = time.time() - start_time
+        logger.info(f"Preallocated memory in {prealloc_time:.2f} seconds.")
     except Exception as e:
         logger.error(f"Error preallocating combined_embeddings array: {e}")
         sys.exit(1)
@@ -132,8 +135,11 @@ def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_fal
     start_idx = 0
     for embeddings in embeddings_list:
         end_idx = start_idx + embeddings.shape[0]
+        logger.info(f"Copying embeddings from index {start_idx} to {end_idx}.")
+        copy_start_time = time.time()
         combined_embeddings[start_idx:end_idx] = embeddings[:]
-        logger.info(f"Copied embeddings from index {start_idx} to {end_idx}.")
+        copy_time = time.time() - copy_start_time
+        logger.info(f"Copied embeddings from {start_idx} to {end_idx} in {copy_time:.2f} seconds.")
         start_idx = end_idx
 
     # Concatenate datasets
