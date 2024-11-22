@@ -7,7 +7,6 @@
     "remove_period": true,
     "dataset_path": "datasets",
     "processed_dataset_path": "embeddings_layers",
-    "token": "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",
     "probes_dir": "probes_layers",
     "probe_name": "all-conj",
     "save_probes": true
