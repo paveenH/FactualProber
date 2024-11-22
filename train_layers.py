@@ -209,7 +209,6 @@ def evaluate_model(model, test_embeddings, test_labels, batch_size=32):
 
 def main():
     # Set up logging
-    print("start")
     logging.basicConfig(filename="classification.log", level=logging.INFO,format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     logger = logging.getLogger(__name__)
     print("Execution started.")
@@ -241,6 +240,7 @@ def main():
     sanitized_model_name = model_name.replace("/", "_")
 
     # Load datasets   
+    print("Loading Data.")
     combined_dataset, combined_embeddings = load_datasets_and_embds(
         dataset_path=dataset_path,
         dataset_names=dataset_names,
