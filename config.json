@@ -1,5 +1,5 @@
 {
-    "model": "meta-llama/Llama-3.1-8B-Instruct",
+    "model": "meta-llama/Llama-3.1-1B-Instruct",
     "layers_to_use": [-4],
     "list_of_datasets": ["cities", "facts", "elements", "animals", "companies", "inventions", "capitals", "generated", "neg_companies", "neg_facts"],
     "true_false": true,
