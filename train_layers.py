@@ -212,7 +212,7 @@ def main():
     print("start")
     logging.basicConfig(filename="classification.log", level=logging.INFO,format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     logger = logging.getLogger(__name__)
-    logger.info("Execution started.")
+    print("Execution started.")
 
     # Load config
     config_parameters = load_config()
