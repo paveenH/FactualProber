@@ -13,6 +13,8 @@ import logging
 import json
 import argparse
 import time
+from tqdm import tqdm
+
 
 import pandas as pd
 import numpy as np
@@ -131,9 +133,9 @@ def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_fal
         logger.error(f"Error preallocating combined_embeddings array: {e}")
         sys.exit(1)
     
-    # Second pass: Copy embeddings into preallocated array
+    # Second pass: Copy embeddings into preallocated array with progress bar
     start_idx = 0
-    for embeddings in embeddings_list:
+    for embeddings in tqdm(embeddings_list, desc="Copying embeddings"):
         end_idx = start_idx + embeddings.shape[0]
         logger.info(f"Copying embeddings from index {start_idx} to {end_idx}.")
         copy_start_time = time.time()
@@ -332,23 +334,62 @@ def main():
         logger=logger
     )
     
-    # Split combined_dataset into train, val, test
-    train_dataset, temp_dataset, train_embeddings, temp_embeddings = train_test_split(
-        combined_dataset,
-        combined_embeddings,
-        test_size=0.2,
-        random_state=42,
-        stratify=combined_dataset["label"]
-    )
-
-    val_dataset, test_dataset, val_embeddings, test_embeddings = train_test_split(
-        temp_dataset,
-        temp_embeddings,
-        test_size=0.5,
-        random_state=42,
-        stratify=temp_dataset["label"]
-    )
+    # 确保 combined_embeddings 是连续内存布局
+    if not combined_embeddings.flags['C_CONTIGUOUS']:
+        combined_embeddings = np.ascontiguousarray(combined_embeddings)
+        logger.info("Converted combined_embeddings to C-contiguous array.")
+        print("Converted combined_embeddings to C-contiguous array.")
     
+    # 可选：转换为 float16 以减少内存占用
+    # combined_embeddings = combined_embeddings.astype(np.float16)
+    # logger.info("Converted combined_embeddings to float16.")
+    # print("Converted combined_embeddings to float16.")
+
+    # 可选：创建一个小的子集进行测试
+    # subset_size = 1000
+    # combined_dataset = combined_dataset.iloc[:subset_size].reset_index(drop=True)
+    # combined_embeddings = combined_embeddings[:subset_size]
+    # logger.info(f"Subset dataset has {len(combined_dataset)} samples.")
+    # print(f"Subset dataset has {len(combined_dataset)} samples.")
+
+    # 添加日志：开始手动拆分数据集
+    logger.info("Starting manual data splitting.")
+    print("Starting manual data splitting.")
+
+    # 记录拆分开始时间
+    split_start_time = time.time()
+
+    # 打乱索引
+    shuffled_indices = np.random.permutation(len(combined_dataset))
+
+    # 定义拆分比例
+    train_frac = 0.8
+    val_frac = 0.1
+    test_frac = 0.1
+
+    # 计算拆分索引
+    train_end = int(train_frac * len(shuffled_indices))
+    val_end = train_end + int(val_frac * len(shuffled_indices))
+
+    train_indices = shuffled_indices[:train_end]
+    val_indices = shuffled_indices[train_end:val_end]
+    test_indices = shuffled_indices[val_end:]
+
+    # 拆分数据集
+    train_dataset = combined_dataset.iloc[train_indices].reset_index(drop=True)
+    val_dataset = combined_dataset.iloc[val_indices].reset_index(drop=True)
+    test_dataset = combined_dataset.iloc[test_indices].reset_index(drop=True)
+
+    # 拆分嵌入
+    train_embeddings = combined_embeddings[train_indices]
+    val_embeddings = combined_embeddings[val_indices]
+    test_embeddings = combined_embeddings[test_indices]
+
+    # 记录拆分总耗时
+    split_time = time.time() - split_start_time
+    logger.info(f"Data splitting completed in {split_time:.2f} seconds.")
+    print(f"Data splitting completed in {split_time:.2f} seconds.")
+
     # labels
     train_labels = train_dataset["label"].values
     val_labels = val_dataset["label"].values
