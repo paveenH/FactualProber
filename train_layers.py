@@ -111,7 +111,8 @@ def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_fal
     
     # Concatenate embeddings using memory mapping
     try:
-        combined_embeddings = np.concatenate([embeddings[:].astype(np.float16) for embeddings in embeddings_list], axis=0)
+        logger.info("Starting to concatenate embeddings.")
+        combined_embeddings = np.concatenate([embeddings[:] for embeddings in embeddings_list], axis=0)
         logger.info(f"Combined dataset has {len(combined_dataset)} samples.")
         logger.info(f"Combined embeddings shape: {combined_embeddings.shape}")
     except Exception as e:
@@ -328,6 +329,9 @@ def main():
     print(f"Number of samples in training set: {num_train_samples}")
     print(f"Number of samples in validation set: {num_val_samples}")
     print(f"Number of samples in test set: {num_test_samples}")
+    logger.info(f"Number of samples in training set: {num_train_samples}")
+    logger.info(f"Number of samples in validation set: {num_val_samples}")
+    logger.info(f"Number of samples in test set: {num_test_samples}")
 
     # Display label distribution in each split
     train_label_counts = train_dataset["label"].value_counts().to_dict()
@@ -337,6 +341,9 @@ def main():
     print(f"Label distribution in training set: {train_label_counts}")
     print(f"Label distribution in validation set: {val_label_counts}")
     print(f"Label distribution in test set: {test_label_counts}")
+    logger.info(f"Label distribution in training set: {train_label_counts}")
+    logger.info(f"Label distribution in validation set: {val_label_counts}")
+    logger.info(f"Label distribution in test set: {test_label_counts}")
 
     # Train the model
     num_layers = train_embeddings.shape[1]
