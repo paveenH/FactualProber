@@ -26,7 +26,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from model import AttentionMLP
 from utils import load_config, get_free_gpu, load_data
 
-
 def correct_str(str_arr):
     """Converts a string representation of a numpy array into a comma-separated string."""
     val_to_ret = (
@@ -40,13 +39,11 @@ def correct_str(str_arr):
     )
     return val_to_ret
 
-
 def compute_roc_auc(y_true, y_scores):
     """Compute ROC AUC."""
     fpr, tpr, thresholds = roc_curve(y_true, y_scores)
     roc_auc = auc(fpr, tpr)
     return roc_auc, fpr, tpr, thresholds
-
 
 def find_optimal_threshold(fpr, tpr, thresholds):
     """Find the optimal threshold that maximizes the difference between TPR and FPR."""
@@ -54,10 +51,33 @@ def find_optimal_threshold(fpr, tpr, thresholds):
     optimal_threshold = thresholds[optimal_idx]
     return optimal_threshold
 
+def verify_npy_file(npy_file_path, logger=None):
+    try:
+        logger.info(f"Verifying .npy file at {npy_file_path}")
+        with open(npy_file_path, 'rb') as f:
+            magic = f.read(6)
+            if magic != b'\x93NUMPY':
+                raise ValueError("Not a valid .npy file")
+        embeddings = np.load(npy_file_path, mmap_mode='r')
+        logger.info(f".npy file is valid. Shape: {embeddings.shape}")
+        return True
+    except Exception as e:
+        logger.error(f"Verification failed for {npy_file_path}: {e}")
+        return False
 
-def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_false, embds_path, sanitized_model_name):
+def load_embeddings(npy_file_path, logger):
+    try:
+        logger.info(f"Starting to load embeddings from {npy_file_path}")
+        embeddings = np.load(npy_file_path, mmap_mode='r')
+        logger.info(f"Embeddings shape: {embeddings.shape}")
+        return embeddings
+    except Exception as e:
+        logger.error(f"Error loading embeddings from {npy_file_path}: {e}")
+        return None
+
+def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_false, embds_path, sanitized_model_name, logger):
     """
-    Load datasets and their corresponding embeddings.
+    Load datasets and their corresponding embeddings using memory mapping.
     """
     datasets = []
     embeddings_list = []
@@ -65,12 +85,16 @@ def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_fal
     for dataset_name in dataset_names: 
         df = load_data(dataset_path, dataset_name, true_false)
         
-        # read embeddings
+        # Read embeddings with memory mapping
         npy_file = embds_path / f"embeddings_{dataset_name}_{sanitized_model_name}.npy"
-        embeddings = np.load(npy_file)
+        embeddings = load_embeddings(npy_file, logger)
+        
+        if embeddings is None:
+            logger.error(f"Failed to load embeddings for dataset {dataset_name}. Skipping.")
+            continue
         
         if len(df) != embeddings.shape[0]:
-            logging.error(f"Number of embeddings ({embeddings.shape[0]}) does not match number of rows in {dataset_name}({len(df)}).")
+            logger.error(f"Number of embeddings ({embeddings.shape[0]}) does not match number of rows in {dataset_name} ({len(df)}).")
             continue
         
         if remove_period:
@@ -79,14 +103,22 @@ def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_fal
         datasets.append(df)
         embeddings_list.append(embeddings)
     
-    combined_dataset = pd.concat(datasets, ignore_index=True)
-    combined_embeddings = np.concatenate(embeddings_list, axis=0)
+    if not datasets or not embeddings_list:
+        logger.error("No valid datasets and embeddings loaded.")
+        sys.exit(1)
     
-    logging.info(f"Combined dataset has {len(combined_dataset)} samples.")
-    logging.info(f"Combined embeddings shape: {combined_embeddings.shape}")
+    combined_dataset = pd.concat(datasets, ignore_index=True)
+    
+    # Concatenate embeddings using memory mapping
+    try:
+        combined_embeddings = np.concatenate([embeddings[:].astype(np.float16) for embeddings in embeddings_list], axis=0)
+        logger.info(f"Combined dataset has {len(combined_dataset)} samples.")
+        logger.info(f"Combined embeddings shape: {combined_embeddings.shape}")
+    except Exception as e:
+        logger.error(f"Error concatenating embeddings: {e}")
+        sys.exit(1)
         
     return combined_dataset, combined_embeddings
-
 
 def save_threshold(threshold_file, probe_name, threshold_value):
     """Save the optimal threshold to a JSON file."""
@@ -103,7 +135,6 @@ def save_threshold(threshold_file, probe_name, threshold_value):
     except Exception as e:
         print(f"Error saving threshold: {e}")
         sys.exit(1)
-
 
 def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, epochs=15, batch_size=32, learning_rate=0.001):
     """Train the model and evaluate on validation set after each epoch."""
@@ -175,7 +206,6 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
 
     return model
 
-
 def evaluate_model(model, test_embeddings, test_labels, batch_size=32):
     """Evaluate the model and return predictions and probabilities."""
     test_embeddings_tensor = torch.tensor(test_embeddings, dtype=torch.float32)
@@ -206,12 +236,17 @@ def evaluate_model(model, test_embeddings, test_labels, batch_size=32):
     all_labels = torch.cat(all_labels).numpy()
     return avg_loss, all_probs, all_labels
 
-
 def main():
     # Set up logging
-    logging.basicConfig(filename="classification.log", level=logging.INFO,format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        filename="classification.log",
+        filemode='a'
+    )
     logger = logging.getLogger(__name__)
     print("Execution started.")
+    logger.info("Execution started.")
 
     # Load config
     config_parameters = load_config()
@@ -239,16 +274,29 @@ def main():
 
     sanitized_model_name = model_name.replace("/", "_")
 
-    # Load datasets   
-    print("Loading Data.")
+    # Verify and load embeddings
+    valid_dataset_names = []
+    for dataset_name in dataset_names:
+        npy_file = embds_path / f"embeddings_{dataset_name}_{sanitized_model_name}.npy"
+        if verify_npy_file(npy_file, logger):
+            valid_dataset_names.append(dataset_name)
+        else:
+            logger.error(f".npy file for {dataset_name} is invalid. Skipping.")
+    
+    if not valid_dataset_names:
+        logger.error("No valid datasets to process. Exiting.")
+        sys.exit(1)
+
+    # Load datasets and embeddings
     combined_dataset, combined_embeddings = load_datasets_and_embds(
         dataset_path=dataset_path,
-        dataset_names=dataset_names,
+        dataset_names=valid_dataset_names,
         true_false=true_false,
         remove_period=remove_period,
         embds_path=embds_path,
-        sanitized_model_name=sanitized_model_name
-        )
+        sanitized_model_name=sanitized_model_name,
+        logger=logger
+    )
     
     # Split combined_dataset into train, val, test
     train_dataset, temp_dataset, train_embeddings, temp_embeddings = train_test_split(
@@ -294,7 +342,8 @@ def main():
     num_layers = train_embeddings.shape[1]
     hidden_size = train_embeddings.shape[2]
     
-    print(f"num_layers {num_layers}, hidden_size{hidden_size}")
+    print(f"num_layers {num_layers}, hidden_size {hidden_size}")
+    logger.info(f"num_layers {num_layers}, hidden_size {hidden_size}")
 
     model = AttentionMLP(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
     model = train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels)
@@ -330,13 +379,14 @@ def main():
 
     # Print results
     print(f"Test Accuracy: {test_accuracy:.4f}, Test AUC: {test_roc_auc:.4f}, Optimal Threshold: {optimal_threshold_value:.4f}")
+    logger.info(f"Test Accuracy: {test_accuracy:.4f}, Test AUC: {test_roc_auc:.4f}, Optimal Threshold: {optimal_threshold_value:.4f}")
 
     # Save the trained model
     if save_probes:
         os.makedirs(probes_path, exist_ok=True)
         probe_path = probes_path / f"{probe_name_full}.pt"
         torch.save(model.state_dict(), probe_path)
-        logging.info(f"Trained model saved to {probe_path}")
+        logger.info(f"Trained model saved to {probe_path}")
 
     # Save test predictions and probabilities
     test_dataset_copy = test_dataset.copy()
@@ -356,13 +406,19 @@ def main():
     test_dataset_copy.to_csv(output_path, index=False)
 
     logger.info("Execution completed.")
-
+    print("Execution completed.")
 
 if __name__ == "__main__":
     os.environ["HF_HOME"] = "/data2/cache/d12922004"
 
     # Set up logging
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", filename="embedding_extraction.log")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        filename="embedding_extraction.log",
+        filemode='a'
+    )
+    logger = logging.getLogger(__name__)
 
     # Check if CUDA is available
     cuda_available = torch.cuda.is_available()
@@ -372,19 +428,20 @@ if __name__ == "__main__":
         device_id = get_free_gpu(cuda_available)
         if device_id is not None:
             device = torch.device(f"cuda:{device_id}")
-            logging.info(f"Using GPU: cuda:{device_id}")
+            logger.info(f"Using GPU: cuda:{device_id}")
         else:
             device = torch.device("cuda:0")
-            logging.info("Falling back to GPU: cuda:0")
+            logger.info("Falling back to GPU: cuda:0")
     else:
         if torch.backends.mps.is_available():
             device = torch.device("mps")  # If available, choose Apple's MPS
-            logging.info("Using MPS device")
+            logger.info("Using MPS device")
         else:
             device = torch.device("cpu")  # If no GPU and MPS, use CPU
-            logging.info("Using CPU")
+            logger.info("Using CPU")
 
     print(f"Using device: {device}")
+    logger.info(f"Using device: {device}")
 
     # Set random seed for reproducibility
     torch.manual_seed(42)
