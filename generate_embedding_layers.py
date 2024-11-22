@@ -104,12 +104,12 @@ def main():
     parser.add_argument("--true_false", type=bool, help="Append 'true_false' to dataset name?")
     parser.add_argument("--batch_size", type=int, help="Batch size for processing.")
     parser.add_argument("--remove_period", type=bool, help="Remove periods at the end of sentences?")
-    parser.add_argument("--token", help="Your Hugging Face access token.")
+    # parser.add_argument("--token", help="Your Hugging Face access token.")
 
     args = parser.parse_args()
 
     # Get parameters from args or config
-    token = args.token or config_parameters.get("token")
+    # token = args.token or config_parameters.get("token")
     model_name = args.model or config_parameters.get("model")
     should_remove_period = args.remove_period if args.remove_period is not None else config_parameters.get("remove_period", False)
     dataset_names = args.dataset_names or config_parameters.get("list_of_datasets", [])
@@ -119,7 +119,7 @@ def main():
     output_path = Path(config_parameters.get("processed_dataset_path", "embeddings"))
 
     # Initialize model and tokenizer
-    model, tokenizer = init_model(model_name, token)
+    model, tokenizer = init_model(model_name)
     model.eval()  # Set model to evaluation mode
 
     logging.info("Execution started.")
