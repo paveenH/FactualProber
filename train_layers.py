@@ -153,9 +153,20 @@ def save_threshold(threshold_file, probe_name, threshold_value):
         print(f"Error saving threshold: {e}")
         sys.exit(1)
 
-def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, device, epochs=15, batch_size=32, learning_rate=0.001, early_stopping_patience=4):
+def train_layers(
+    model, 
+    train_embeddings, 
+    train_labels, 
+    val_embeddings, 
+    val_labels, 
+    device, 
+    epochs=50, 
+    batch_size=32, 
+    learning_rate=0.001, 
+    early_stopping_patience=5
+):
     """
-    Train the model and evaluate on validation set after each epoch with Early Stopping.
+    Train the model with Early Stopping based on validation loss, gradient clipping, and learning rate scheduler.
 
     Parameters:
     - model: The PyTorch model to train.
@@ -166,7 +177,7 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
     - device: Device to run the model on.
     - epochs: Maximum number of training epochs.
     - batch_size: Batch size for training.
-    - learning_rate: Learning rate for the optimizer.
+    - learning_rate: Initial learning rate for the optimizer.
     - early_stopping_patience: Number of epochs to wait for improvement before stopping.
     """
     # Prepare training data
@@ -184,13 +195,22 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     criterion = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)  # 引入权重衰减
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, 
+        mode='min', 
+        factor=0.5, 
+        patience=2, 
+        verbose=True, 
+        min_lr=1e-6
+    )
 
     model.to(device)
 
     best_val_accuracy = 0.0
     best_model_state = None
-    early_stopping_counter = 0  # 初始化早停计数器
+    early_stopping_counter = 0  
 
     for epoch in range(epochs):
         epoch_loss = 0.0
@@ -201,6 +221,8 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
             outputs = model(batch_embeddings)
             loss = criterion(outputs, batch_labels)
             loss.backward()
+            # Added gradient clipping to prevent gradient explosion
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             epoch_loss += loss.item()
 
@@ -211,23 +233,28 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
         model.eval()  # Set model to evaluation mode
         all_val_outputs = []
         all_val_labels = []
+        val_loss_total = 0.0
         with torch.no_grad():
             for val_embeddings_batch, val_labels_batch in val_dataloader:
                 val_embeddings_batch = val_embeddings_batch.to(device)
                 val_labels_batch = val_labels_batch.to(device)
                 val_outputs = model(val_embeddings_batch)
+                loss = criterion(val_outputs, val_labels_batch)
+                val_loss_total += loss.item()
                 all_val_outputs.append(val_outputs.cpu())
                 all_val_labels.append(val_labels_batch.cpu())
 
+        avg_val_loss = val_loss_total / len(val_dataloader)
         val_outputs_cat = torch.cat(all_val_outputs).numpy()
         val_labels_cat = torch.cat(all_val_labels).numpy()
 
+        scheduler.step(avg_val_loss)
+
         val_preds = (val_outputs_cat >= 0.5).astype(int)
         val_accuracy = accuracy_score(val_labels_cat, val_preds)
-        print(f", Validation Accuracy: {val_accuracy:.4f}")
-        logging.info(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_epoch_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
+        print(f", Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
+        logging.info(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_epoch_loss:.4f}, Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
 
-        # early stopping
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
             best_model_state = deepcopy(model.state_dict())
