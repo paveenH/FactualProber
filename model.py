@@ -47,23 +47,18 @@ class AttentionMLP(nn.Module):
         
         # FC layers without residual connections
         self.fc1 = nn.Linear(hidden_size, 256)
-        self.fc1_norm = nn.LayerNorm(256)
         self.relu1 = nn.ReLU()
         self.dropout1 = nn.Dropout(p=dropout)
         
         self.fc2 = nn.Linear(256, 128)
-        self.fc2_norm = nn.LayerNorm(128)
         self.relu2 = nn.ReLU()
         self.dropout2 = nn.Dropout(p=dropout)
         
         self.fc3 = nn.Linear(128, 64)
-        self.fc3_norm = nn.LayerNorm(64)
         self.relu3 = nn.ReLU()
         self.dropout3 = nn.Dropout(p=dropout)
         
-        self.fc4 = nn.Linear(64, 1)
-        self.fc4_norm = nn.LayerNorm(1)
-        
+        self.fc4 = nn.Linear(64, 1)        
         self.sigmoid = nn.Sigmoid()
         
         self._init_weights()
@@ -101,25 +96,21 @@ class AttentionMLP(nn.Module):
         # MLP layers without Residual Connections
         # FC1
         fc1_out = self.fc1(pooled_output)
-        fc1_out = self.fc1_norm(fc1_out)  # Removed residual connection
         fc1_out = self.relu1(fc1_out)
         fc1_out = self.dropout1(fc1_out)
         
         # FC2
         fc2_out = self.fc2(fc1_out)
-        fc2_out = self.fc2_norm(fc2_out)
         fc2_out = self.relu2(fc2_out)
         fc2_out = self.dropout2(fc2_out)
         
         # FC3
         fc3_out = self.fc3(fc2_out)
-        fc3_out = self.fc3_norm(fc3_out)
         fc3_out = self.relu3(fc3_out)
         fc3_out = self.dropout3(fc3_out)
         
         # FC4
         out = self.fc4(fc3_out)
-        out = self.fc4_norm(out)  # Removed residual connection
         out = self.sigmoid(out)
         
         return out
