@@ -40,77 +40,65 @@ class SAPLMAWithCNN(nn.Module):
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
 
-        # CNN 
-        self.conv1 = nn.Conv1d(in_channels=num_layers, out_channels=64, kernel_size=7, stride=1, padding=3)
-        self.conv2 = nn.Conv1d(in_channels=64, out_channels=32, kernel_size=5, stride=1, padding=2)
-        self.conv3 = nn.Conv1d(in_channels=32, out_channels=16, kernel_size=3, stride=1, padding=1)
+        # CNN部分: 提取层间交互关系并逐步压缩
+        self.conv1 = nn.Conv1d(in_channels=num_layers, out_channels=16, kernel_size=7, stride=1, padding=3)
+        self.bn1 = nn.BatchNorm1d(16)
+        self.conv2 = nn.Conv1d(in_channels=16, out_channels=1, kernel_size=5, stride=1, padding=2)
         self.leaky_relu = nn.LeakyReLU(inplace=True)
-        self.max_pool = nn.MaxPool1d(kernel_size=2, stride=2)  # Reduce spatial dimension by 2
 
-        # FC
-        # After three conv layers and pooling, spatial dimension is 32 / 2 / 2 / 2 = 4
-        # Thus, x shape: batch_size x 16 x 4
-        self.fc1 = nn.Linear(16 * 4, 1024)  # 16 * 4 = 64
-        self.bn1 = nn.BatchNorm1d(1024)
-        self.fc2 = nn.Linear(1024, 512)
-        self.bn2 = nn.BatchNorm1d(512)
-        self.fc3 = nn.Linear(512, 256)
-        self.bn3 = nn.BatchNorm1d(256)
-        self.fc4 = nn.Linear(256, 1)
+        # MLP部分: 对4096维特征降维并分类
+        self.fc1 = nn.Linear(hidden_dim, 1024)  # 4096 -> 1024
+        self.bn_fc1 = nn.BatchNorm1d(1024)
+        self.fc2 = nn.Linear(1024, 512)         # 1024 -> 512
+        self.bn_fc2 = nn.BatchNorm1d(512)
+        self.fc3 = nn.Linear(512, 256)          # 512 -> 256
+        self.bn_fc3 = nn.BatchNorm1d(256)
+        self.fc4 = nn.Linear(256, 1)            # 256 -> 1
 
-        # 激活函数和正则化
         self.dropout = nn.Dropout(p=0.3)
-        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        # x shape: batch_size × num_layers × hidden_dim
-        # 交换维度以匹配卷积层输入格式
-        x = x.permute(0, 2, 1)  # 现在 x 的形状是 batch_size × hidden_dim × num_layers
+        """
+        前向传播函数。
 
-        # 卷积层
-        x = self.conv1(x)  # batch_size x 64 x 4096
-        x = self.leaky_relu(x)
-        x = self.max_pool(x)  # batch_size x 64 x 2048
+        参数:
+        - x: 输入张量，形状为 [batch_size, num_layers, hidden_dim]
 
-        x = self.conv2(x)  # batch_size x 32 x 2048
-        x = self.leaky_relu(x)
-        x = self.max_pool(x)  # batch_size x 32 x 1024
+        返回:
+        - logits: 未经过 Sigmoid 激活的预测结果，形状为 [batch_size, 1]
+        """
+        # 输入形状: batch_size × num_layers × hidden_dim
+        # 保持 hidden_dim 不变，直接对 layers 维度进行卷积
 
-        x = self.conv3(x)  # batch_size x 16 x 1024
-        x = self.leaky_relu(x)
-        x = self.max_pool(x)  # batch_size x 16 x 512
-
-        # 再次应用池化以进一步减少空间维度
-        x = self.max_pool(x)  # batch_size x 16 x 256
-        x = self.max_pool(x)  # batch_size x 16 x 128
-        x = self.max_pool(x)  # batch_size x 16 x 64
-        x = self.max_pool(x)  # batch_size x 16 x 32
-        x = self.max_pool(x)  # batch_size x 16 x 16
-        x = self.max_pool(x)  # batch_size x 16 x 8
-        x = self.max_pool(x)  # batch_size x 16 x 4
-
-        # 展平
-        x = x.view(x.size(0), -1)  # batch_size x (16 * 4) = batch_size x 64
-
-        # 全连接层
-        x = self.fc1(x)  # 64 -> 1024
+        # 卷积操作
+        x = self.conv1(x)  # 输出形状: [batch_size, 16, hidden_dim]
         x = self.bn1(x)
         x = self.leaky_relu(x)
-        x = self.dropout(x)
 
-        x = self.fc2(x)  # 1024 -> 512
-        x = self.bn2(x)
+        x = self.conv2(x)  # 输出形状: [batch_size, 1, hidden_dim]
+        x = self.leaky_relu(x)
+
+        # 展平: [batch_size, hidden_dim]
+        x = x.view(x.size(0), -1)
+
+        # 全连接层
+        x = self.fc1(x)          # [batch_size, 1024]
+        x = self.bn_fc1(x)
         x = self.leaky_relu(x)
         x = self.dropout(x)
 
-        x = self.fc3(x)  # 512 -> 256
-        x = self.bn3(x)
+        x = self.fc2(x)          # [batch_size, 512]
+        x = self.bn_fc2(x)
         x = self.leaky_relu(x)
         x = self.dropout(x)
 
-        x = self.fc4(x)  # 256 -> 1
-        x = self.sigmoid(x)
-        return x
+        x = self.fc3(x)          # [batch_size, 256]
+        x = self.bn_fc3(x)
+        x = self.leaky_relu(x)
+        x = self.dropout(x)
+
+        logits = self.fc4(x)     # [batch_size, 1]
+        return logits             # 返回未经过 Sigmoid 的 logits
 
 
 class AttentionMLP(nn.Module):
