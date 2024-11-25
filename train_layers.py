@@ -21,7 +21,7 @@ from sklearn.metrics import roc_curve, auc, accuracy_score
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from model import AttentionMLP
+from model import SAPLMAWithCNN
 from utils import load_config, get_free_gpu, load_data
 
 def compute_roc_auc(y_true, y_scores):
@@ -433,7 +433,7 @@ def main():
     print(f"num_layers {num_layers}, hidden_size {hidden_size}")
     logger.info(f"num_layers {num_layers}, hidden_size {hidden_size}")
 
-    model = AttentionMLP(hidden_size=hidden_size, num_layers=num_layers, num_heads=4, dropout=0.1).to(device)
+    model = SAPLMAWithCNN(hidden_size=hidden_size, num_layers=num_layers).to(device)
     model = train_layers(
         model, 
         train_embeddings, 
