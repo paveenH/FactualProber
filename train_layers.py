@@ -194,7 +194,7 @@ def train_layers(
     val_dataset = TensorDataset(val_embeddings_tensor, val_labels_tensor)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, 
@@ -249,12 +249,10 @@ def train_layers(
         val_outputs_cat = torch.cat(all_val_outputs).numpy()
         val_labels_cat = torch.cat(all_val_labels).numpy()
         
-        val_probs = torch.sigmoid(torch.tensor(val_outputs_cat)).numpy()
-
         # Updated learning rate scheduler
         scheduler.step(avg_val_loss)
         
-        val_preds = (val_probs >= 0.5).astype(int)
+        val_preds = (val_outputs_cat >= 0.5).astype(int)
         val_accuracy = accuracy_score(val_labels_cat, val_preds)
         print(f", Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
         logging.info(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_epoch_loss:.4f}, Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
@@ -285,7 +283,7 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
     dataset = TensorDataset(test_embeddings_tensor, test_labels_tensor)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCELoss()
     model.eval()
     model.to(device)
     total_loss = 0.0
@@ -299,8 +297,7 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
             loss = criterion(outputs, batch_labels)
             total_loss += loss.item()
             
-            probs = torch.sigmoid(outputs)
-            all_probs.append(probs.cpu())
+            all_probs.append(outputs.cpu())
             all_labels.append(batch_labels.cpu())
 
     avg_loss = total_loss / len(dataloader)
