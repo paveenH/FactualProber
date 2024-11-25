@@ -14,19 +14,16 @@ import json
 import argparse
 import time
 from tqdm import tqdm
-
 import pandas as pd
 import numpy as np
 from copy import deepcopy
 from sklearn.metrics import roc_curve, auc, accuracy_score
-
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-
 from model import AttentionMLP
 from utils import load_config, get_free_gpu, load_data
-from torch.cuda.amp import autocast, GradScaler
+from torch import amp
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
@@ -180,7 +177,7 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
 
     scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=2, verbose=True)
-    scaler = GradScaler()
+    scaler = amp.GradScaler()
 
     model.to(device)
 
@@ -195,7 +192,7 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
         for batch_embeddings, batch_labels in train_dataloader:
             batch_embeddings, batch_labels = batch_embeddings.to(device), batch_labels.to(device)
             optimizer.zero_grad()
-            with autocast():
+            with amp.autocast():
                 outputs = model(batch_embeddings)
                 loss = criterion(outputs, batch_labels)
             scaler.scale(loss).backward()
@@ -217,7 +214,7 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
             for val_embeddings_batch, val_labels_batch in val_dataloader:
                 val_embeddings_batch = val_embeddings_batch.to(device)
                 val_labels_batch = val_labels_batch.to(device)
-                with autocast():
+                with amp.autocast():
                     val_outputs = model(val_embeddings_batch)
                 all_val_outputs.append(val_outputs.cpu())
                 all_val_labels.append(val_labels_batch.cpu())
@@ -270,7 +267,7 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
     with torch.no_grad():
         for batch_embeddings, batch_labels in dataloader:
             batch_embeddings, batch_labels = batch_embeddings.to(device), batch_labels.to(device)
-            with autocast():
+            with amp.autocast():
                 outputs = model(batch_embeddings)  # Outputs are raw logits
                 loss = criterion(outputs, batch_labels)
             total_loss += loss.item()
