@@ -433,7 +433,7 @@ def main():
     print(f"num_layers {num_layers}, hidden_size {hidden_size}")
     logger.info(f"num_layers {num_layers}, hidden_size {hidden_size}")
 
-    model = SAPLMAWithCNN(hidden_size=hidden_size, num_layers=num_layers).to(device)
+    model = SAPLMAWithCNN(hidden_dim=hidden_size, num_layers=num_layers).to(device)
     model = train_layers(
         model, 
         train_embeddings, 
