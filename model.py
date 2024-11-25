@@ -157,7 +157,10 @@ class AttentionMLPReduction(nn.Module):
         attn_weights_normalized = attn_weights_mean / attn_weights_mean.sum(dim=-1, keepdim=True)  # (batch_size, num_layers, num_layers)
         
         # Weighted sum of embeddings
-        pooled_output = torch.bmm(attn_weights_normalized, attn_output)  # (batch_size, num_layers, reduced_size)
+        # pooled_output = torch.bmm(attn_weights_normalized, attn_output)  # (batch_size, num_layers, reduced_size)
+        pooled_output = torch.matmul(attn_weights_normalized, attn_output)
+        # pooled_output = (attn_weights_normalized.unsqueeze(-1) * attn_output).sum(dim=2) 
+        
         pooled_output = pooled_output.mean(dim=1)  # (batch_size, reduced_size)
         
         # MLP
