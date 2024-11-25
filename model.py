@@ -101,7 +101,7 @@ class AttentionMLPReduction(nn.Module):
     Aggregate multiple layers of embeddings and perform classification using the attention mechanism
     """
     def __init__(self, hidden_size=4096, reduced_size=2048, num_layers=32, num_heads=8, dropout=0.1):
-        super(AttentionMLP, self).__init__()
+        super(AttentionMLPReduction, self).__init__()
         # Dimension Reduction Layer
         self.dim_reduction = nn.Linear(hidden_size, reduced_size)
         self.relu_reduction = nn.ReLU()
@@ -177,7 +177,7 @@ class AttentionMLPReduction(nn.Module):
 
 class AttentionMLP1DCNN(nn.Module):
     def __init__(self, hidden_size=4096, reduced_size=2048, num_layers=32, num_heads=8, dropout=0.1):
-        super(AttentionMLP, self).__init__()
+        super(AttentionMLP1DCNN, self).__init__()
         # Convolutional Dimension Reduction
         self.conv1 = nn.Conv1d(in_channels=num_layers, out_channels=num_layers, kernel_size=3, padding=1)
         self.relu_conv = nn.ReLU()
