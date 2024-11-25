@@ -15,32 +15,20 @@ import argparse
 import time
 from tqdm import tqdm
 
-
 import pandas as pd
 import numpy as np
 from copy import deepcopy
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc, accuracy_score
 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from model import AttentionMLP
+from model import AttentionMLPReduction
 from utils import load_config, get_free_gpu, load_data
+from torch.cuda.amp import autocast, GradScaler
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-def correct_str(str_arr):
-    """Converts a string representation of a numpy array into a comma-separated string."""
-    val_to_ret = (
-        str_arr.replace("[array(", "")
-        .replace("dtype=float32)]", "")
-        .replace("\n", "")
-        .replace(" ", "")
-        .replace("],", "]")
-        .replace("[", "")
-        .replace("]", "")
-    )
-    return val_to_ret
 
 def compute_roc_auc(y_true, y_scores):
     """Compute ROC AUC."""
@@ -171,7 +159,7 @@ def save_threshold(threshold_file, probe_name, threshold_value):
         print(f"Error saving threshold: {e}")
         sys.exit(1)
 
-def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, epochs=15, batch_size=32, learning_rate=0.001):
+def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, device, epochs=15, batch_size=32, learning_rate=0.001):
     """Train the model and evaluate on validation set after each epoch."""
     # Prepare training data
     train_embeddings_tensor = torch.tensor(train_embeddings, dtype=torch.float32)
@@ -188,12 +176,17 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     criterion = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
+
+    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=2, verbose=True)
+    scaler = GradScaler()
 
     model.to(device)
 
     best_val_accuracy = 0.0
     best_model_state = None
+    early_stopping_patience = 5
+    early_stopping_counter = 0
 
     for epoch in range(epochs):
         epoch_loss = 0.0
@@ -201,10 +194,15 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
         for batch_embeddings, batch_labels in train_dataloader:
             batch_embeddings, batch_labels = batch_embeddings.to(device), batch_labels.to(device)
             optimizer.zero_grad()
-            outputs = model(batch_embeddings)
-            loss = criterion(outputs, batch_labels)
-            loss.backward()
-            optimizer.step()
+            with autocast():
+                outputs = model(batch_embeddings)
+                loss = criterion(outputs, batch_labels)
+            scaler.scale(loss).backward()
+            # Add gradient clipping
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            scaler.step(optimizer)
+            scaler.update()
             epoch_loss += loss.item()
 
         avg_epoch_loss = epoch_loss / len(train_dataloader)
@@ -218,7 +216,8 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
             for val_embeddings_batch, val_labels_batch in val_dataloader:
                 val_embeddings_batch = val_embeddings_batch.to(device)
                 val_labels_batch = val_labels_batch.to(device)
-                val_outputs = model(val_embeddings_batch)
+                with autocast():
+                    val_outputs = model(val_embeddings_batch)
                 all_val_outputs.append(val_outputs.cpu())
                 all_val_labels.append(val_labels_batch.cpu())
 
@@ -230,11 +229,21 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
         print(f", Validation Accuracy: {val_accuracy:.4f}")
         logging.info(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_epoch_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
 
-        # Save the model if it has the best validation accuracy so far
+        # Scheduler step
+        scheduler.step(val_accuracy)
+
+        # Check for improvement
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
             best_model_state = deepcopy(model.state_dict())
+            early_stopping_counter = 0
             logging.info(f"New best validation accuracy: {best_val_accuracy:.4f} at epoch {epoch + 1}")
+        else:
+            early_stopping_counter += 1
+            if early_stopping_counter >= early_stopping_patience:
+                logger.info("Early stopping triggered.")
+                print("Early stopping triggered.")
+                break
 
     # Load the best model weights before returning
     if best_model_state is not None:
@@ -242,7 +251,7 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
 
     return model
 
-def evaluate_model(model, test_embeddings, test_labels, batch_size=32):
+def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
     """Evaluate the model and return predictions and probabilities."""
     test_embeddings_tensor = torch.tensor(test_embeddings, dtype=torch.float32)
     test_labels_tensor = torch.tensor(test_labels, dtype=torch.float32).unsqueeze(1)
@@ -260,8 +269,9 @@ def evaluate_model(model, test_embeddings, test_labels, batch_size=32):
     with torch.no_grad():
         for batch_embeddings, batch_labels in dataloader:
             batch_embeddings, batch_labels = batch_embeddings.to(device), batch_labels.to(device)
-            outputs = model(batch_embeddings)
-            loss = criterion(outputs, batch_labels)
+            with autocast():
+                outputs = model(batch_embeddings)
+                loss = criterion(outputs, batch_labels)
             total_loss += loss.item()
 
             all_probs.append(outputs.cpu())
@@ -274,13 +284,8 @@ def evaluate_model(model, test_embeddings, test_labels, batch_size=32):
 
 def main():
     # Set up logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        filename="classification.log",
-        filemode='a'
-    )
     logger = logging.getLogger(__name__)
+    logger.info("Execution started.")
     print("Execution started.")
     logger.info("Execution started.")
 
@@ -334,40 +339,21 @@ def main():
         logger=logger
     )
     
-    # 确保 combined_embeddings 是连续内存布局
+    # Make sure combined_embeddings is in contiguous memory layout
     if not combined_embeddings.flags['C_CONTIGUOUS']:
         combined_embeddings = np.ascontiguousarray(combined_embeddings)
         logger.info("Converted combined_embeddings to C-contiguous array.")
         print("Converted combined_embeddings to C-contiguous array.")
-    
-    # 可选：转换为 float16 以减少内存占用
-    # combined_embeddings = combined_embeddings.astype(np.float16)
-    # logger.info("Converted combined_embeddings to float16.")
-    # print("Converted combined_embeddings to float16.")
 
-    # 可选：创建一个小的子集进行测试
-    # subset_size = 1000
-    # combined_dataset = combined_dataset.iloc[:subset_size].reset_index(drop=True)
-    # combined_embeddings = combined_embeddings[:subset_size]
-    # logger.info(f"Subset dataset has {len(combined_dataset)} samples.")
-    # print(f"Subset dataset has {len(combined_dataset)} samples.")
-
-    # 添加日志：开始手动拆分数据集
     logger.info("Starting manual data splitting.")
     print("Starting manual data splitting.")
 
-    # 记录拆分开始时间
+    # split datasets
     split_start_time = time.time()
-
-    # 打乱索引
     shuffled_indices = np.random.permutation(len(combined_dataset))
-
-    # 定义拆分比例
     train_frac = 0.8
     val_frac = 0.1
-    test_frac = 0.1
 
-    # 计算拆分索引
     train_end = int(train_frac * len(shuffled_indices))
     val_end = train_end + int(val_frac * len(shuffled_indices))
 
@@ -375,17 +361,14 @@ def main():
     val_indices = shuffled_indices[train_end:val_end]
     test_indices = shuffled_indices[val_end:]
 
-    # 拆分数据集
     train_dataset = combined_dataset.iloc[train_indices].reset_index(drop=True)
     val_dataset = combined_dataset.iloc[val_indices].reset_index(drop=True)
     test_dataset = combined_dataset.iloc[test_indices].reset_index(drop=True)
 
-    # 拆分嵌入
     train_embeddings = combined_embeddings[train_indices]
     val_embeddings = combined_embeddings[val_indices]
     test_embeddings = combined_embeddings[test_indices]
 
-    # 记录拆分总耗时
     split_time = time.time() - split_start_time
     logger.info(f"Data splitting completed in {split_time:.2f} seconds.")
     print(f"Data splitting completed in {split_time:.2f} seconds.")
@@ -426,11 +409,11 @@ def main():
     print(f"num_layers {num_layers}, hidden_size {hidden_size}")
     logger.info(f"num_layers {num_layers}, hidden_size {hidden_size}")
 
-    model = AttentionMLP(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
-    model = train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels)
+    model = AttentionMLPReduction(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
+    model = train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, device)
 
     # Evaluate on validation set to find optimal threshold
-    val_loss, val_probs, val_true = evaluate_model(model, val_embeddings, val_labels)
+    val_loss, val_probs, val_true = evaluate_model(model, test_embeddings, test_labels, device)
     val_probs_flat = val_probs.ravel()
     val_true_flat = val_true.ravel()
 
@@ -451,7 +434,7 @@ def main():
     save_threshold(threshold_file, probe_name_full, optimal_threshold_value)
 
     # Evaluate on test set
-    test_loss, test_probs, test_true = evaluate_model(model, test_embeddings, test_labels)
+    test_loss, test_probs, test_true = evaluate_model(model, test_embeddings, test_labels, device)
     test_probs_flat = test_probs.ravel()
     test_true_flat = test_true.ravel()
 
