@@ -40,54 +40,75 @@ class SAPLMAWithCNN(nn.Module):
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
 
-        self.conv1 = nn.Conv1d(in_channels=num_layers, out_channels=16, kernel_size=3, stride=1, padding=1)
-        self.relu = nn.ReLU(inplace=True)
-        self.dropout = nn.Dropout(p=0.2)
-        self.conv2 = nn.Conv1d(in_channels=16, out_channels=1, kernel_size=3, stride=1, padding=1)
+        # CNN 
+        self.conv1 = nn.Conv1d(in_channels=num_layers, out_channels=64, kernel_size=7, stride=1, padding=3)
+        self.conv2 = nn.Conv1d(in_channels=64, out_channels=32, kernel_size=5, stride=1, padding=2)
+        self.conv3 = nn.Conv1d(in_channels=32, out_channels=16, kernel_size=3, stride=1, padding=1)
+        self.leaky_relu = nn.LeakyReLU(inplace=True)
+        self.max_pool = nn.MaxPool1d(kernel_size=2, stride=2)  # Reduce spatial dimension by 2
 
-        self.fc1 = nn.Linear(hidden_dim, 2048)
-        self.fc2 = nn.Linear(2048, 1024)
-        self.fc3 = nn.Linear(1024, 512)
-        self.fc4 = nn.Linear(512, 256)
-        self.fc5 = nn.Linear(256, 128)
-        self.fc6 = nn.Linear(128, 1)
+        # FC
+        # After three conv layers and pooling, spatial dimension is 32 / 2 / 2 / 2 = 4
+        # Thus, x shape: batch_size x 16 x 4
+        self.fc1 = nn.Linear(16 * 4, 1024)  # 16 * 4 = 64
+        self.bn1 = nn.BatchNorm1d(1024)
+        self.fc2 = nn.Linear(1024, 512)
+        self.bn2 = nn.BatchNorm1d(512)
+        self.fc3 = nn.Linear(512, 256)
+        self.bn3 = nn.BatchNorm1d(256)
+        self.fc4 = nn.Linear(256, 1)
+
+        # 激活函数和正则化
+        self.dropout = nn.Dropout(p=0.3)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        # x shape: batch_size × layers × hidden_dim
-        batch_size = x.size(0)
+        # x shape: batch_size × num_layers × hidden_dim
+        # 交换维度以匹配卷积层输入格式
+        x = x.permute(0, 2, 1)  # 现在 x 的形状是 batch_size × hidden_dim × num_layers
 
-        # Apply CNN to reduce layers dimension
-        x = self.conv1(x)  # shape: batch_size × 16 × hidden_dim
-        x = self.relu(x)
-        x = self.conv2(x)  # shape: batch_size × 1 × hidden_dim
-        x = self.relu(x)
+        # 卷积层
+        x = self.conv1(x)  # batch_size x 64 x 4096
+        x = self.leaky_relu(x)
+        x = self.max_pool(x)  # batch_size x 64 x 2048
 
-        # Flatten for fully connected layers
-        x = x.view(batch_size, -1)  # shape: batch_size × hidden_dim
+        x = self.conv2(x)  # batch_size x 32 x 2048
+        x = self.leaky_relu(x)
+        x = self.max_pool(x)  # batch_size x 32 x 1024
 
-        # Fully connected layers with Dropout
-        x = self.fc1(x)
-        x = self.relu(x)
+        x = self.conv3(x)  # batch_size x 16 x 1024
+        x = self.leaky_relu(x)
+        x = self.max_pool(x)  # batch_size x 16 x 512
+
+        # 再次应用池化以进一步减少空间维度
+        x = self.max_pool(x)  # batch_size x 16 x 256
+        x = self.max_pool(x)  # batch_size x 16 x 128
+        x = self.max_pool(x)  # batch_size x 16 x 64
+        x = self.max_pool(x)  # batch_size x 16 x 32
+        x = self.max_pool(x)  # batch_size x 16 x 16
+        x = self.max_pool(x)  # batch_size x 16 x 8
+        x = self.max_pool(x)  # batch_size x 16 x 4
+
+        # 展平
+        x = x.view(x.size(0), -1)  # batch_size x (16 * 4) = batch_size x 64
+
+        # 全连接层
+        x = self.fc1(x)  # 64 -> 1024
+        x = self.bn1(x)
+        x = self.leaky_relu(x)
         x = self.dropout(x)
 
-        x = self.fc2(x)
-        x = self.relu(x)
+        x = self.fc2(x)  # 1024 -> 512
+        x = self.bn2(x)
+        x = self.leaky_relu(x)
         x = self.dropout(x)
 
-        x = self.fc3(x)
-        x = self.relu(x)
+        x = self.fc3(x)  # 512 -> 256
+        x = self.bn3(x)
+        x = self.leaky_relu(x)
         x = self.dropout(x)
 
-        x = self.fc4(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-
-        x = self.fc5(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-
-        x = self.fc6(x)
+        x = self.fc4(x)  # 256 -> 1
         x = self.sigmoid(x)
         return x
 
