@@ -195,11 +195,10 @@ def train_layers(
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     criterion = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)  
-
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, 
-        mode='max', 
+        mode='min',  
         factor=0.5, 
         patience=2, 
         verbose=True, 
@@ -208,13 +207,16 @@ def train_layers(
 
     model.to(device)
 
-    best_val_accuracy = 0.0
+    best_val_loss = float('inf') 
     best_model_state = None
     early_stopping_counter = 0  
 
+    # Anomaly Detection
+    torch.autograd.set_detect_anomaly(True)
+
     for epoch in range(epochs):
         epoch_loss = 0.0
-        model.train()  # Set model to training mode
+        model.train() 
         for batch_embeddings, batch_labels in train_dataloader:
             batch_embeddings, batch_labels = batch_embeddings.to(device), batch_labels.to(device)
             optimizer.zero_grad()
@@ -229,8 +231,7 @@ def train_layers(
         avg_epoch_loss = epoch_loss / len(train_dataloader)
         print(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_epoch_loss:.4f}", end="")
 
-        # Evaluate on validation set
-        model.eval()  # Set model to evaluation mode
+        model.eval()  
         all_val_outputs = []
         all_val_labels = []
         val_loss_total = 0.0
@@ -248,6 +249,7 @@ def train_layers(
         val_outputs_cat = torch.cat(all_val_outputs).numpy()
         val_labels_cat = torch.cat(all_val_labels).numpy()
 
+        # Updated learning rate scheduler
         scheduler.step(avg_val_loss)
 
         val_preds = (val_outputs_cat >= 0.5).astype(int)
@@ -255,20 +257,19 @@ def train_layers(
         print(f", Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
         logging.info(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_epoch_loss:.4f}, Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
 
-        if val_accuracy > best_val_accuracy:
-            best_val_accuracy = val_accuracy
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
             best_model_state = deepcopy(model.state_dict())
-            early_stopping_counter = 0  
-            logging.info(f"New best validation accuracy: {best_val_accuracy:.4f} at epoch {epoch + 1}")
+            early_stopping_counter = 0  # 重置计数器
+            logging.info(f"New best validation loss: {best_val_loss:.4f} at epoch {epoch + 1}")
         else:
             early_stopping_counter += 1
-            logging.info(f"No improvement in validation accuracy for {early_stopping_counter} epoch(s).")
+            logging.info(f"No improvement in validation loss for {early_stopping_counter} epoch(s).")
             if early_stopping_counter >= early_stopping_patience:
                 logger.info("Early stopping triggered.")
                 print("Early stopping triggered.")
                 break
 
-    # Load the best model weights before returning
     if best_model_state is not None:
         model.load_state_dict(best_model_state)
 
@@ -321,11 +322,13 @@ def main():
     parser.add_argument("--remove_period", action="store_true", help="Remove final period from sentences.")
     parser.add_argument("--save_probes", action="store_true", help="Save trained probes.")
     parser.add_argument("--probe_name", help="Probe name")
+    parser.add_argument("--add_name", help="Added probe name")
     
     args = parser.parse_args()
     
     model_name = args.model or config_parameters.get("model")
     probe_name = args.probe_name or config_parameters.get("probe_name")
+    add_name = args.add_name or config_parameters.get("add_name")
     remove_period = args.remove_period if args.remove_period else config_parameters.get("remove_period", False)
     true_false = args.true_false if args.true_false is not None else config_parameters.get("true_false", False)
     dataset_names = args.dataset_names if args.dataset_names is not None else config_parameters.get("list_of_datasets", [])
@@ -482,7 +485,7 @@ def main():
     # Save the trained model
     if save_probes:
         os.makedirs(probes_path, exist_ok=True)
-        probe_path = probes_path / f"{probe_name_full}.pt"
+        probe_path = probes_path / f"{probe_name_full}_{add_name}.pt"
         torch.save(model.state_dict(), probe_path)
         logger.info(f"Trained model saved to {probe_path}")
 
