@@ -89,12 +89,13 @@ class AttentionMLP(nn.Module):
         out: Tensor (batch_size, 1)
         """
         # Multi-head Attention with Residual Connection and LayerNorm
-        attn_output, attn_weights = self.attention(x, x, x)  # attn_output: (batch_size, num_layers, hidden_size)
+        attn_output, attn_weights = self.attention(x, x, x)  # attn_output: (batch_size, num_layers, hidden_size)  attn_weights [32, 8, 32, 32]
         x = self.attention_norm(attn_output + x)  # Residual Connection (valid shape)
         
         # Compute mean of attention weights
-        attn_weights_mean = attn_weights.mean(dim=1)  # (batch_size, num_layers)
-        attn_weights_normalized = attn_weights_mean / attn_weights_mean.sum(dim=1, keepdim=True)  # normalization
+        attn_weights_self = attn_weights.mean(dim=2)  #  [32, 8, 32]
+        attn_weights_mean = attn_weights_self.mean(dim=1) # (batch_size, num_layers)
+        attn_weights_normalized = attn_weights_mean / attn_weights_mean.sum(dim=1, keepdim=True)  # normalization [32, 32]
         
         # Mean pooling with normalized attention weights
         pooled_output = torch.bmm(attn_weights_normalized.unsqueeze(1), x).squeeze(1)  # (batch_size, hidden_size)
