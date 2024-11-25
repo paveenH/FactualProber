@@ -14,18 +14,13 @@ import json
 import argparse
 import time
 from tqdm import tqdm
-
-
 import pandas as pd
 import numpy as np
 from copy import deepcopy
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc, accuracy_score
-
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-
 from model import AttentionMLP
 from utils import load_config, get_free_gpu, load_data
 
@@ -158,8 +153,22 @@ def save_threshold(threshold_file, probe_name, threshold_value):
         print(f"Error saving threshold: {e}")
         sys.exit(1)
 
-def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, device, epochs=15, batch_size=32, learning_rate=0.001):
-    """Train the model and evaluate on validation set after each epoch."""
+def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, device, epochs=15, batch_size=32, learning_rate=0.001, early_stopping_patience=4):
+    """
+    Train the model and evaluate on validation set after each epoch with Early Stopping.
+
+    Parameters:
+    - model: The PyTorch model to train.
+    - train_embeddings: Training embeddings.
+    - train_labels: Training labels.
+    - val_embeddings: Validation embeddings.
+    - val_labels: Validation labels.
+    - device: Device to run the model on.
+    - epochs: Maximum number of training epochs.
+    - batch_size: Batch size for training.
+    - learning_rate: Learning rate for the optimizer.
+    - early_stopping_patience: Number of epochs to wait for improvement before stopping.
+    """
     # Prepare training data
     train_embeddings_tensor = torch.tensor(train_embeddings, dtype=torch.float32)
     train_labels_tensor = torch.tensor(train_labels, dtype=torch.float32).unsqueeze(1)
@@ -181,6 +190,7 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
 
     best_val_accuracy = 0.0
     best_model_state = None
+    early_stopping_counter = 0  # 初始化早停计数器
 
     for epoch in range(epochs):
         epoch_loss = 0.0
@@ -217,11 +227,19 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
         print(f", Validation Accuracy: {val_accuracy:.4f}")
         logging.info(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_epoch_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
 
-        # Save the model if it has the best validation accuracy so far
+        # early stopping
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
             best_model_state = deepcopy(model.state_dict())
+            early_stopping_counter = 0  
             logging.info(f"New best validation accuracy: {best_val_accuracy:.4f} at epoch {epoch + 1}")
+        else:
+            early_stopping_counter += 1
+            logging.info(f"No improvement in validation accuracy for {early_stopping_counter} epoch(s).")
+            if early_stopping_counter >= early_stopping_patience:
+                logger.info("Early stopping triggered.")
+                print("Early stopping triggered.")
+                break
 
     # Load the best model weights before returning
     if best_model_state is not None:
@@ -386,7 +404,18 @@ def main():
     logger.info(f"num_layers {num_layers}, hidden_size {hidden_size}")
 
     model = AttentionMLP(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
-    model = train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, device)
+    model = train_layers(
+        model, 
+        train_embeddings, 
+        train_labels, 
+        val_embeddings, 
+        val_labels, 
+        device, 
+        epochs=15,  
+        batch_size=32, 
+        learning_rate=0.001, 
+        early_stopping_patience=5  
+        )
     
     # Evaluate on validation set to find optimal threshold
     val_loss, val_probs, val_true = evaluate_model(model, val_embeddings, val_labels, device)
