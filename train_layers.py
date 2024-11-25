@@ -24,7 +24,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from model import AttentionMLPReduction
+from model import AttentionMLP
 from utils import load_config, get_free_gpu, load_data
 from torch.cuda.amp import autocast, GradScaler
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -409,7 +409,7 @@ def main():
     print(f"num_layers {num_layers}, hidden_size {hidden_size}")
     logger.info(f"num_layers {num_layers}, hidden_size {hidden_size}")
 
-    model = AttentionMLPReduction(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
+    model = AttentionMLP(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
     model = train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, device)
 
     # Evaluate on validation set to find optimal threshold
