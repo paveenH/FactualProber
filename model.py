@@ -122,6 +122,7 @@ class AttentionMLP(nn.Module):
         out = self.fc4(fc3_out)
         out = self.fc4_bn(out)  
         
+        out = self.sigmoid(out)
         return out
 
 class AttentionMLPReduction(nn.Module):
