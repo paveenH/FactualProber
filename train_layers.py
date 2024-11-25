@@ -433,7 +433,7 @@ def main():
     print(f"num_layers {num_layers}, hidden_size {hidden_size}")
     logger.info(f"num_layers {num_layers}, hidden_size {hidden_size}")
 
-    model = AttentionMLP(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
+    model = AttentionMLP(hidden_size=hidden_size, num_layers=num_layers, num_heads=4, dropout=0.1).to(device)
     model = train_layers(
         model, 
         train_embeddings, 
