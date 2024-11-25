@@ -14,18 +14,20 @@ import json
 import argparse
 import time
 from tqdm import tqdm
+
+
 import pandas as pd
 import numpy as np
 from copy import deepcopy
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc, accuracy_score
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
+
 from model import AttentionMLP
 from utils import load_config, get_free_gpu, load_data
-from torch import amp
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-
 
 def compute_roc_auc(y_true, y_scores):
     """Compute ROC AUC."""
@@ -172,19 +174,13 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
     val_dataset = TensorDataset(val_embeddings_tensor, val_labels_tensor)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    # criterion = nn.BCELoss()
-    criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
-
-    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=2, verbose=True)
-    scaler = amp.GradScaler()
+    criterion = nn.BCELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     model.to(device)
 
     best_val_accuracy = 0.0
     best_model_state = None
-    early_stopping_patience = 5
-    early_stopping_counter = 0
 
     for epoch in range(epochs):
         epoch_loss = 0.0
@@ -192,15 +188,10 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
         for batch_embeddings, batch_labels in train_dataloader:
             batch_embeddings, batch_labels = batch_embeddings.to(device), batch_labels.to(device)
             optimizer.zero_grad()
-            with amp.autocast():
-                outputs = model(batch_embeddings)
-                loss = criterion(outputs, batch_labels)
-            scaler.scale(loss).backward()
-            # Add gradient clipping
-            scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            scaler.step(optimizer)
-            scaler.update()
+            outputs = model(batch_embeddings)
+            loss = criterion(outputs, batch_labels)
+            loss.backward()
+            optimizer.step()
             epoch_loss += loss.item()
 
         avg_epoch_loss = epoch_loss / len(train_dataloader)
@@ -214,8 +205,7 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
             for val_embeddings_batch, val_labels_batch in val_dataloader:
                 val_embeddings_batch = val_embeddings_batch.to(device)
                 val_labels_batch = val_labels_batch.to(device)
-                with amp.autocast():
-                    val_outputs = model(val_embeddings_batch)
+                val_outputs = model(val_embeddings_batch)
                 all_val_outputs.append(val_outputs.cpu())
                 all_val_labels.append(val_labels_batch.cpu())
 
@@ -227,21 +217,11 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
         print(f", Validation Accuracy: {val_accuracy:.4f}")
         logging.info(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_epoch_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
 
-        # Scheduler step
-        scheduler.step(val_accuracy)
-
-        # Check for improvement
+        # Save the model if it has the best validation accuracy so far
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
             best_model_state = deepcopy(model.state_dict())
-            early_stopping_counter = 0
             logging.info(f"New best validation accuracy: {best_val_accuracy:.4f} at epoch {epoch + 1}")
-        else:
-            early_stopping_counter += 1
-            if early_stopping_counter >= early_stopping_patience:
-                logger.info("Early stopping triggered.")
-                print("Early stopping triggered.")
-                break
 
     # Load the best model weights before returning
     if best_model_state is not None:
@@ -257,7 +237,7 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
     dataset = TensorDataset(test_embeddings_tensor, test_labels_tensor)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    criterion = nn.BCEWithLogitsLoss()  # Use the updated loss function
+    criterion = nn.BCELoss()
     model.eval()
     model.to(device)
     total_loss = 0.0
@@ -267,15 +247,11 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
     with torch.no_grad():
         for batch_embeddings, batch_labels in dataloader:
             batch_embeddings, batch_labels = batch_embeddings.to(device), batch_labels.to(device)
-            with amp.autocast():
-                outputs = model(batch_embeddings)  # Outputs are raw logits
-                loss = criterion(outputs, batch_labels)
+            outputs = model(batch_embeddings)
+            loss = criterion(outputs, batch_labels)
             total_loss += loss.item()
 
-            # Apply sigmoid to convert logits to probabilities
-            probs = torch.sigmoid(outputs)
-
-            all_probs.append(probs.cpu())
+            all_probs.append(outputs.cpu())
             all_labels.append(batch_labels.cpu())
 
     avg_loss = total_loss / len(dataloader)
@@ -286,7 +262,6 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
 def main():
     # Set up logging
     logger = logging.getLogger(__name__)
-    logger.info("Execution started.")
     print("Execution started.")
     logger.info("Execution started.")
 
@@ -373,7 +348,7 @@ def main():
     split_time = time.time() - split_start_time
     logger.info(f"Data splitting completed in {split_time:.2f} seconds.")
     print(f"Data splitting completed in {split_time:.2f} seconds.")
-
+    
     # labels
     train_labels = train_dataset["label"].values
     val_labels = val_dataset["label"].values
@@ -412,14 +387,9 @@ def main():
 
     model = AttentionMLP(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
     model = train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, device)
-
-    # Evaluate on validation set to find optimal threshold
-    # val_loss, val_probs, val_true = evaluate_model(model, test_embeddings, test_labels, device)
-    # val_probs_flat = val_probs.ravel()
-    # val_true_flat = val_true.ravel()
     
-    val_loss, val_logits, val_true = evaluate_model(model, val_embeddings, val_labels, device)
-    val_probs = torch.sigmoid(torch.tensor(val_logits)).numpy()
+    # Evaluate on validation set to find optimal threshold
+    val_loss, val_probs, val_true = evaluate_model(model, val_embeddings, val_labels, device)
     val_probs_flat = val_probs.ravel()
     val_true_flat = val_true.ravel()
 
