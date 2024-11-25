@@ -195,11 +195,11 @@ def train_layers(
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     criterion = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)  # 引入权重衰减
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)  
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, 
-        mode='min', 
+        mode='max', 
         factor=0.5, 
         patience=2, 
         verbose=True, 
