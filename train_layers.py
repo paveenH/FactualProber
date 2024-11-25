@@ -210,9 +210,6 @@ def train_layers(
     best_model_state = None
     early_stopping_counter = 0  
 
-    # Anomaly Detection
-    torch.autograd.set_detect_anomaly(True)
-
     for epoch in range(epochs):
         epoch_loss = 0.0
         model.train() 
@@ -276,11 +273,11 @@ def train_layers(
 
 def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
     """Evaluate the model and return predictions and probabilities."""
-    test_embeddings_tensor = torch.tensor(test_embeddings, dtype=torch.float32)
-    test_labels_tensor = torch.tensor(test_labels, dtype=torch.float32).unsqueeze(1)
+    test_embeddings_tensor = torch.from_numpy(test_embeddings).float()
+    test_labels_tensor = torch.from_numpy(test_labels).float().unsqueeze(1)
 
     dataset = TensorDataset(test_embeddings_tensor, test_labels_tensor)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True)
 
     criterion = nn.BCELoss()
     model.eval()
@@ -291,7 +288,7 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
 
     with torch.no_grad():
         for batch_embeddings, batch_labels in dataloader:
-            batch_embeddings, batch_labels = batch_embeddings.to(device), batch_labels.to(device)
+            batch_embeddings, batch_labels = batch_embeddings.to(device, non_blocking=True), batch_labels.to(device, non_blocking=True)
             outputs = model(batch_embeddings)
             loss = criterion(outputs, batch_labels)
             total_loss += loss.item()
