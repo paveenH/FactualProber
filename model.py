@@ -61,6 +61,12 @@ class AttentionMLP(nn.Module):
         self.fc4 = nn.Linear(64, 1)        
         self.sigmoid = nn.Sigmoid()
         
+        # BN
+        self.fc1_bn = nn.BatchNorm1d(256)
+        self.fc2_bn = nn.BatchNorm1d(128)
+        self.fc3_bn = nn.BatchNorm1d(64)
+        self.fc4_bn = nn.BatchNorm1d(1)
+        
         self._init_weights()
     
     def _init_weights(self):
@@ -96,22 +102,25 @@ class AttentionMLP(nn.Module):
         # MLP layers without Residual Connections
         # FC1
         fc1_out = self.fc1(pooled_output)
+        fc1_out = self.fc1_bn(fc1_out)  
         fc1_out = self.relu1(fc1_out)
         fc1_out = self.dropout1(fc1_out)
-        
+
         # FC2
         fc2_out = self.fc2(fc1_out)
+        fc2_out = self.fc2_bn(fc2_out)  
         fc2_out = self.relu2(fc2_out)
         fc2_out = self.dropout2(fc2_out)
-        
+
         # FC3
         fc3_out = self.fc3(fc2_out)
+        fc3_out = self.fc3_bn(fc3_out)  
         fc3_out = self.relu3(fc3_out)
         fc3_out = self.dropout3(fc3_out)
-        
+
         # FC4
         out = self.fc4(fc3_out)
-        out = self.sigmoid(out)
+        out = self.fc4_bn(out)  
         
         return out
 
