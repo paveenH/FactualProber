@@ -53,7 +53,7 @@ class AttentionMLP(nn.Module):
         self.relu3 = nn.ReLU()
         self.dropout3 = nn.Dropout(p=dropout)
         self.fc4 = nn.Linear(64, 1)
-        self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
         
         self._init_weights()
     
@@ -92,7 +92,7 @@ class AttentionMLP(nn.Module):
         out = self.relu3(out)
         out = self.dropout3(out)
         out = self.fc4(out)
-        out = self.sigmoid(out)
+        # out = self.sigmoid(out)
         
         return out
 
