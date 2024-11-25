@@ -175,7 +175,8 @@ def train_layers(model, train_embeddings, train_labels, val_embeddings, val_labe
     val_dataset = TensorDataset(val_embeddings_tensor, val_labels_tensor)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    criterion = nn.BCELoss()
+    # criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
 
     scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=2, verbose=True)
@@ -259,7 +260,7 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
     dataset = TensorDataset(test_embeddings_tensor, test_labels_tensor)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()  # Use the updated loss function
     model.eval()
     model.to(device)
     total_loss = 0.0
@@ -270,11 +271,14 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
         for batch_embeddings, batch_labels in dataloader:
             batch_embeddings, batch_labels = batch_embeddings.to(device), batch_labels.to(device)
             with autocast():
-                outputs = model(batch_embeddings)
+                outputs = model(batch_embeddings)  # Outputs are raw logits
                 loss = criterion(outputs, batch_labels)
             total_loss += loss.item()
 
-            all_probs.append(outputs.cpu())
+            # Apply sigmoid to convert logits to probabilities
+            probs = torch.sigmoid(outputs)
+
+            all_probs.append(probs.cpu())
             all_labels.append(batch_labels.cpu())
 
     avg_loss = total_loss / len(dataloader)
@@ -413,7 +417,12 @@ def main():
     model = train_layers(model, train_embeddings, train_labels, val_embeddings, val_labels, device)
 
     # Evaluate on validation set to find optimal threshold
-    val_loss, val_probs, val_true = evaluate_model(model, test_embeddings, test_labels, device)
+    # val_loss, val_probs, val_true = evaluate_model(model, test_embeddings, test_labels, device)
+    # val_probs_flat = val_probs.ravel()
+    # val_true_flat = val_true.ravel()
+    
+    val_loss, val_logits, val_true = evaluate_model(model, val_embeddings, val_labels, device)
+    val_probs = torch.sigmoid(torch.tensor(val_logits)).numpy()
     val_probs_flat = val_probs.ravel()
     val_true_flat = val_true.ravel()
 
