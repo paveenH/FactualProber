@@ -37,23 +37,32 @@ class SAPLMAClassifier(nn.Module):
 class AttentionMLP(nn.Module):
     """
     Aggregate multiple layers of embeddings and perform classification using the attention mechanism
+    Enhanced with Layer Normalization and Residual Connections for improved performance and stability
     """
     def __init__(self, hidden_size=1024, num_layers=24, num_heads=8, dropout=0.1):
         super(AttentionMLP, self).__init__()
         # Attention layer
         self.attention = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=num_heads, dropout=dropout, batch_first=True)
+        self.attention_norm = nn.LayerNorm(hidden_size)
+        
         # FC layers
         self.fc1 = nn.Linear(hidden_size, 256)
+        self.fc1_norm = nn.LayerNorm(256)
         self.relu1 = nn.ReLU()
         self.dropout1 = nn.Dropout(p=dropout)
+        
         self.fc2 = nn.Linear(256, 128)
+        self.fc2_norm = nn.LayerNorm(128)
         self.relu2 = nn.ReLU()
         self.dropout2 = nn.Dropout(p=dropout)
+        
         self.fc3 = nn.Linear(128, 64)
+        self.fc3_norm = nn.LayerNorm(64)
         self.relu3 = nn.ReLU()
         self.dropout3 = nn.Dropout(p=dropout)
+        
         self.fc4 = nn.Linear(64, 1)
-        self.sigmoid = nn.Sigmoid()
+        self.fc4_norm = nn.LayerNorm(1)
         
         self._init_weights()
     
@@ -67,32 +76,48 @@ class AttentionMLP(nn.Module):
                 nn.init.xavier_uniform_(m.in_proj_weight)
                 if m.in_proj_bias is not None:
                     nn.init.zeros_(m.in_proj_bias)
+            elif isinstance(m, nn.LayerNorm):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
     
     def forward(self, x):
         """
         x: Tensor (batch_size, num_layers, hidden_size)
         out: Tensor (batch_size, 1)
         """
+        # Multi-head Attention with Residual Connection and LayerNorm
         attn_output, attn_weights = self.attention(x, x, x)  # attn_output: (batch_size, num_layers, hidden_size)
+        x = self.attention_norm(attn_output + x)  # Residual Connection
         
+        # Compute mean of attention weights
         attn_weights_mean = attn_weights.mean(dim=1)  # (batch_size, num_layers)
         attn_weights_normalized = attn_weights_mean / attn_weights_mean.sum(dim=1, keepdim=True)  # normalization
         
-        # mean pooling
-        pooled_output = torch.bmm(attn_weights_normalized.unsqueeze(1), attn_output).squeeze(1)  # (batch_size, hidden_size)
+        # Mean pooling with normalized attention weights
+        pooled_output = torch.bmm(attn_weights_normalized.unsqueeze(1), x).squeeze(1)  # (batch_size, hidden_size)
         
-        # MLP
-        out = self.fc1(pooled_output)
-        out = self.relu1(out)
-        out = self.dropout1(out)
-        out = self.fc2(out)
-        out = self.relu2(out)
-        out = self.dropout2(out)
-        out = self.fc3(out)
-        out = self.relu3(out)
-        out = self.dropout3(out)
-        out = self.fc4(out)
-        out = self.sigmoid(out)
+        # MLP layers with Residual Connections and LayerNorm
+        # FC1
+        fc1_out = self.fc1(pooled_output)
+        fc1_out = self.fc1_norm(fc1_out + pooled_output)  # Residual Connection
+        fc1_out = self.relu1(fc1_out)
+        fc1_out = self.dropout1(fc1_out)
+        
+        # FC2
+        fc2_out = self.fc2(fc1_out)
+        fc2_out = self.fc2_norm(fc2_out + fc1_out)  # Residual Connection
+        fc2_out = self.relu2(fc2_out)
+        fc2_out = self.dropout2(fc2_out)
+        
+        # FC3
+        fc3_out = self.fc3(fc2_out)
+        fc3_out = self.fc3_norm(fc3_out + fc2_out)  # Residual Connection
+        fc3_out = self.relu3(fc3_out)
+        fc3_out = self.dropout3(fc3_out)
+        
+        # FC4
+        out = self.fc4(fc3_out)
+        out = self.fc4_norm(out + fc3_out)  # Residual Connection
         
         return out
 
