@@ -64,6 +64,8 @@ class AttentionMLP(nn.Module):
         self.fc4 = nn.Linear(64, 1)
         self.fc4_norm = nn.LayerNorm(1)
         
+        self.sigmoid = nn.Sigmoid()
+        
         self._init_weights()
     
     def _init_weights(self):
@@ -118,6 +120,7 @@ class AttentionMLP(nn.Module):
         # FC4
         out = self.fc4(fc3_out)
         out = self.fc4_norm(out)  # Removed residual connection
+        out = self.sigmoid(out)
         
         return out
 
