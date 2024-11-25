@@ -444,7 +444,7 @@ def main():
         val_embeddings, 
         val_labels, 
         device, 
-        epochs=15,  
+        epochs=12,  
         batch_size=32, 
         learning_rate=0.001, 
         early_stopping_patience=5  
