@@ -21,7 +21,7 @@ from sklearn.metrics import roc_curve, auc, accuracy_score
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from model import SAPLMAClassifier
+from model import SAPLMAWithCNN
 from utils import load_config, get_free_gpu, load_data
 
 def compute_roc_auc(y_true, y_scores):
@@ -184,14 +184,14 @@ def train_layers(
     train_labels_tensor = torch.from_numpy(train_labels).float().unsqueeze(1)
 
     train_dataset = TensorDataset(train_embeddings_tensor, train_labels_tensor)
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
 
     # Prepare validation data
     val_embeddings_tensor = torch.from_numpy(val_embeddings).float()
     val_labels_tensor = torch.from_numpy(val_labels).float().unsqueeze(1)
 
     val_dataset = TensorDataset(val_embeddings_tensor, val_labels_tensor)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4)
 
     criterion = nn.BCELoss()
     # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
@@ -278,7 +278,7 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
     test_labels_tensor = torch.from_numpy(test_labels).float().unsqueeze(1)
 
     dataset = TensorDataset(test_embeddings_tensor, test_labels_tensor)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4)
 
     criterion = nn.BCELoss()
     model.eval()
@@ -430,7 +430,7 @@ def main():
     print(f"num_layers {num_layers}, hidden_size {hidden_size}")
     logger.info(f"num_layers {num_layers}, hidden_size {hidden_size}")
 
-    model = SAPLMAClassifier(input_dim=hidden_size).to(device)
+    model = SAPLMAWithCNN(hidden_dim=hidden_size, num_layers=num_layers).to(device)
     model = train_layers(
         model, 
         train_embeddings, 
