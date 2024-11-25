@@ -71,7 +71,6 @@ def load_datasets_and_embds(dataset_path, dataset_names, remove_period, true_fal
     total_samples = 0
     dtype = None  # To store the dtype of embeddings
 
-    # First pass: Load datasets and embeddings, verify, and accumulate total samples
     for dataset_name in dataset_names: 
         df = load_data(dataset_path, dataset_name, true_false)
         npy_file = embds_path / f"embeddings_{dataset_name}_{sanitized_model_name}.npy"
@@ -181,18 +180,18 @@ def train_layers(
     - early_stopping_patience: Number of epochs to wait for improvement before stopping.
     """
     # Prepare training data
-    train_embeddings_tensor = torch.tensor(train_embeddings, dtype=torch.float32)
-    train_labels_tensor = torch.tensor(train_labels, dtype=torch.float32).unsqueeze(1)
+    train_embeddings_tensor = torch.from_numpy(train_embeddings).float()
+    train_labels_tensor = torch.from_numpy(train_labels).float().unsqueeze(1)
 
     train_dataset = TensorDataset(train_embeddings_tensor, train_labels_tensor)
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
 
     # Prepare validation data
-    val_embeddings_tensor = torch.tensor(val_embeddings, dtype=torch.float32)
-    val_labels_tensor = torch.tensor(val_labels, dtype=torch.float32).unsqueeze(1)
+    val_embeddings_tensor = torch.from_numpy(val_embeddings).float()
+    val_labels_tensor = torch.from_numpy(val_labels).float().unsqueeze(1)
 
     val_dataset = TensorDataset(val_embeddings_tensor, val_labels_tensor)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True)
 
     criterion = nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
@@ -218,7 +217,7 @@ def train_layers(
         epoch_loss = 0.0
         model.train() 
         for batch_embeddings, batch_labels in train_dataloader:
-            batch_embeddings, batch_labels = batch_embeddings.to(device), batch_labels.to(device)
+            batch_embeddings, batch_labels = batch_embeddings.to(device, non_blocking=True), batch_labels.to(device, non_blocking=True)
             optimizer.zero_grad()
             outputs = model(batch_embeddings)
             loss = criterion(outputs, batch_labels)
@@ -237,8 +236,8 @@ def train_layers(
         val_loss_total = 0.0
         with torch.no_grad():
             for val_embeddings_batch, val_labels_batch in val_dataloader:
-                val_embeddings_batch = val_embeddings_batch.to(device)
-                val_labels_batch = val_labels_batch.to(device)
+                val_embeddings_batch = val_embeddings_batch.to(device, non_blocking=True)
+                val_labels_batch = val_labels_batch.to(device, non_blocking=True)
                 val_outputs = model(val_embeddings_batch)
                 loss = criterion(val_outputs, val_labels_batch)
                 val_loss_total += loss.item()
