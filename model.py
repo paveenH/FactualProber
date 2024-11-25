@@ -40,13 +40,13 @@ class SAPLMAWithCNN(nn.Module):
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
 
-        # CNN部分: 提取层间交互关系并逐步压缩
+        # 1DCNN
         self.conv1 = nn.Conv1d(in_channels=num_layers, out_channels=16, kernel_size=7, stride=1, padding=3)
         self.bn1 = nn.BatchNorm1d(16)
         self.conv2 = nn.Conv1d(in_channels=16, out_channels=1, kernel_size=5, stride=1, padding=2)
         self.leaky_relu = nn.LeakyReLU(inplace=True)
 
-        # MLP部分: 对4096维特征降维并分类
+        # MLP
         self.fc1 = nn.Linear(hidden_dim, 1024)  # 4096 -> 1024
         self.bn_fc1 = nn.BatchNorm1d(1024)
         self.fc2 = nn.Linear(1024, 512)         # 1024 -> 512
@@ -58,30 +58,18 @@ class SAPLMAWithCNN(nn.Module):
         self.dropout = nn.Dropout(p=0.3)
 
     def forward(self, x):
-        """
-        前向传播函数。
-
-        参数:
-        - x: 输入张量，形状为 [batch_size, num_layers, hidden_dim]
-
-        返回:
-        - logits: 未经过 Sigmoid 激活的预测结果，形状为 [batch_size, 1]
-        """
-        # 输入形状: batch_size × num_layers × hidden_dim
-        # 保持 hidden_dim 不变，直接对 layers 维度进行卷积
-
-        # 卷积操作
-        x = self.conv1(x)  # 输出形状: [batch_size, 16, hidden_dim]
+        # CNN
+        x = self.conv1(x)  # [batch_size, 16, hidden_dim]
         x = self.bn1(x)
         x = self.leaky_relu(x)
 
-        x = self.conv2(x)  # 输出形状: [batch_size, 1, hidden_dim]
+        x = self.conv2(x)  # [batch_size, 1, hidden_dim]
         x = self.leaky_relu(x)
 
-        # 展平: [batch_size, hidden_dim]
+        # Flatten: [batch_size, hidden_dim]
         x = x.view(x.size(0), -1)
 
-        # 全连接层
+        # FC
         x = self.fc1(x)          # [batch_size, 1024]
         x = self.bn_fc1(x)
         x = self.leaky_relu(x)
@@ -98,7 +86,7 @@ class SAPLMAWithCNN(nn.Module):
         x = self.dropout(x)
 
         logits = self.fc4(x)     # [batch_size, 1]
-        return logits             # 返回未经过 Sigmoid 的 logits
+        return logits             
 
 
 class AttentionMLP(nn.Module):
