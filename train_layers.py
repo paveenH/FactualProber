@@ -260,7 +260,7 @@ def train_layers(
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             best_model_state = deepcopy(model.state_dict())
-            early_stopping_counter = 0  # 重置计数器
+            early_stopping_counter = 0  
             logging.info(f"New best validation loss: {best_val_loss:.4f} at epoch {epoch + 1}")
         else:
             early_stopping_counter += 1
