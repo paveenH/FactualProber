@@ -6,6 +6,7 @@ Created on Wed Oct 23 16:45:09 2024
 @author: paveenhuang
 """
 
+
 import os
 import sys
 from pathlib import Path
@@ -161,7 +162,7 @@ def train_layers(
     device, 
     epochs=50, 
     batch_size=32, 
-    learning_rate=0.001, 
+    learning_rate=0.005, 
     early_stopping_patience=5
 ):
     """
@@ -193,8 +194,7 @@ def train_layers(
     val_dataset = TensorDataset(val_embeddings_tensor, val_labels_tensor)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4)
 
-    criterion = nn.BCELoss()
-    # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
+    criterion = nn.BCEWithLogitsLoss()  # Changed to BCEWithLogitsLoss
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-5)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, 
@@ -236,21 +236,25 @@ def train_layers(
             for val_embeddings_batch, val_labels_batch in val_dataloader:
                 val_embeddings_batch = val_embeddings_batch.to(device, non_blocking=True)
                 val_labels_batch = val_labels_batch.to(device, non_blocking=True)
-                val_outputs = model(val_embeddings_batch)
-                loss = criterion(val_outputs, val_labels_batch)
+                outputs = model(val_embeddings_batch)
+                loss = criterion(outputs, val_labels_batch)
                 val_loss_total += loss.item()
-                all_val_outputs.append(val_outputs.cpu())
+                all_val_outputs.append(outputs.cpu())
                 all_val_labels.append(val_labels_batch.cpu())
 
         avg_val_loss = val_loss_total / len(val_dataloader)
-        val_outputs_cat = torch.cat(all_val_outputs).numpy()
-        val_labels_cat = torch.cat(all_val_labels).numpy()
+        val_outputs_cat = torch.cat(all_val_outputs)
+        val_labels_cat = torch.cat(all_val_labels)
         
         # Updated learning rate scheduler
         scheduler.step(avg_val_loss)
         
-        val_preds = (val_outputs_cat >= 0.5).astype(int)
-        val_accuracy = accuracy_score(val_labels_cat, val_preds)
+        # Apply sigmoid to get probabilities
+        val_probs = torch.sigmoid(val_outputs_cat).numpy()
+        val_labels_np = val_labels_cat.numpy()
+        
+        val_preds = (val_probs >= 0.5).astype(int)
+        val_accuracy = accuracy_score(val_labels_np, val_preds)
         print(f", Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
         logging.info(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_epoch_loss:.4f}, Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
 
@@ -280,11 +284,11 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
     dataset = TensorDataset(test_embeddings_tensor, test_labels_tensor)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4)
 
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()  # Changed to BCEWithLogitsLoss
     model.eval()
     model.to(device)
     total_loss = 0.0
-    all_probs = []
+    all_outputs = []
     all_labels = []
 
     with torch.no_grad():
@@ -293,14 +297,13 @@ def evaluate_model(model, test_embeddings, test_labels, device, batch_size=32):
             outputs = model(batch_embeddings)
             loss = criterion(outputs, batch_labels)
             total_loss += loss.item()
-            
-            all_probs.append(outputs.cpu())
+            all_outputs.append(outputs.cpu())
             all_labels.append(batch_labels.cpu())
 
     avg_loss = total_loss / len(dataloader)
-    all_probs = torch.cat(all_probs).numpy()
-    all_labels = torch.cat(all_labels).numpy()
-    return avg_loss, all_probs, all_labels
+    all_outputs = torch.cat(all_outputs)
+    all_labels = torch.cat(all_labels)
+    return avg_loss, all_outputs, all_labels  # Return raw outputs (logits)
 
 def main():
     # Set up logging
@@ -445,12 +448,12 @@ def main():
         )
     
     # Evaluate on validation set to find optimal threshold
-    val_loss, val_probs, val_true = evaluate_model(model, val_embeddings, val_labels, device)
-    val_probs_flat = val_probs.ravel()
-    val_true_flat = val_true.ravel()
+    val_loss, val_outputs, val_true = evaluate_model(model, val_embeddings, val_labels, device)
+    val_probs = torch.sigmoid(val_outputs).numpy().ravel()
+    val_true_flat = val_true.numpy().ravel()
 
     # Compute ROC AUC on validation set
-    val_roc_auc, val_fpr, val_tpr, val_thresholds = compute_roc_auc(val_true_flat, val_probs_flat)
+    val_roc_auc, val_fpr, val_tpr, val_thresholds = compute_roc_auc(val_true_flat, val_probs)
     logger.info(f"Validation ROC AUC: {val_roc_auc:.4f}")
 
     # Find optimal threshold
@@ -466,14 +469,14 @@ def main():
     save_threshold(threshold_file, probe_name_full, optimal_threshold_value)
 
     # Evaluate on test set
-    test_loss, test_probs, test_true = evaluate_model(model, test_embeddings, test_labels, device)
-    test_probs_flat = test_probs.ravel()
-    test_true_flat = test_true.ravel()
+    test_loss, test_outputs, test_true = evaluate_model(model, test_embeddings, test_labels, device)
+    test_probs = torch.sigmoid(test_outputs).numpy().ravel()
+    test_true_flat = test_true.numpy().ravel()
 
     # Calculate accuracy with optimal threshold
-    test_pred_labels = (test_probs_flat >= optimal_threshold_value).astype(int)
+    test_pred_labels = (test_probs >= optimal_threshold_value).astype(int)
     test_accuracy = accuracy_score(test_true_flat, test_pred_labels)
-    test_roc_auc, _, _, _ = compute_roc_auc(test_true_flat, test_probs_flat)
+    test_roc_auc, _, _, _ = compute_roc_auc(test_true_flat, test_probs)
     logger.info(f"Test Accuracy: {test_accuracy:.4f}, Test AUC: {test_roc_auc:.4f}, Optimal Threshold: {optimal_threshold_value:.4f}")
 
     # Print results
@@ -493,7 +496,7 @@ def main():
     if "embeddings" in test_dataset_copy.columns:
         test_dataset_copy = test_dataset_copy.drop(columns=["embeddings"])
 
-    test_dataset_copy["probability"] = test_probs_flat
+    test_dataset_copy["probability"] = test_probs
     test_dataset_copy["prediction"] = test_pred_labels
     test_dataset_copy["probability"] = test_dataset_copy["probability"].round(4)
 
