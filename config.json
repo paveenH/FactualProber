@@ -9,6 +9,6 @@
     "processed_dataset_path": "embeddings_layers",
     "probes_dir": "probes_layers",
     "probe_name": "all-conj",
-    "add_name": "ATTSE1DCNN_head4_dropout0.5",
+    "add_name": "ATTSE2DCNN_head4_dropout0.3",
     "save_probes": true
 }
