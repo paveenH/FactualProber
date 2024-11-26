@@ -446,7 +446,7 @@ def main():
         epochs=12,  
         batch_size=32, 
         learning_rate=0.005, 
-        early_stopping_patience=5  
+        early_stopping_patience=4  
         )
     
     # Evaluate on validation set to find optimal threshold
