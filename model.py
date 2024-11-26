@@ -490,7 +490,7 @@ class AttentionMLPSE2DCNN(nn.Module):
             out_channels=16,             # 输出通道数
             kernel_size=(7, 7),          # 卷积核大小
             stride=(1, 1),
-            padding=(3, 0)               # 仅在高度维度上填充
+            padding=(3, 3)               # 仅在高度维度上填充
         )
         self.bn1 = nn.BatchNorm2d(16)
         
@@ -499,7 +499,7 @@ class AttentionMLPSE2DCNN(nn.Module):
             out_channels=1,              # 输出通道数为1，实现特征聚合
             kernel_size=(5, 5),
             stride=(1, 1),
-            padding=(2, 0)
+            padding=(2, 2)
         )
         self.bn2 = nn.BatchNorm2d(1)
         self.leaky_relu = nn.LeakyReLU(inplace=True)
