@@ -633,12 +633,8 @@ if __name__ == "__main__":
         num_heads=num_heads,
         reduction=reduction
     )
-    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
-    
     input_tensor = torch.randn(batch_size, num_layers, hidden_size).to(device)  # [32, 32, 4096]
-    
     output = model(input_tensor)
-    
     print(f"Final output shape: {output.shape}")  # 应为 [32, 1]
