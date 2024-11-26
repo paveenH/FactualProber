@@ -475,22 +475,19 @@ class AttentionMLPSE1DCNNLayers(nn.Module):
     Aggregate multiple layers of embeddings and perform classification using the attention mechanism.
     Enhanced with SE blocks and 1DCNN for improved feature aggregation and stability.
     """
-    def __init__(self, hidden_size=1024, num_layers=32, num_heads=4, dropout=0.5, reduction=16, num_attention_layers=2):
+    def __init__(self, hidden_size=4096, num_layers=32, num_heads=8, dropout=0.1, reduction=16, num_attention_layers=1):
         super(AttentionMLPSE1DCNNLayers, self).__init__()
         
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.num_attention_layers = num_attention_layers
         
-        # Linear layer to map from 4096 to 1024
-        self.linear = nn.Linear(hidden_size, 1024)
-        
         # Multi-head Attention layers
         self.attention_layers = nn.ModuleList([
-            nn.MultiheadAttention(embed_dim=1024, num_heads=num_heads, dropout=dropout, batch_first=True)
+            nn.MultiheadAttention(embed_dim=hidden_size, num_heads=num_heads, dropout=dropout, batch_first=True)
             for _ in range(num_attention_layers)
         ])
-        self.attention_norms = nn.ModuleList([nn.LayerNorm(1024) for _ in range(num_attention_layers)])
+        self.attention_norms = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(num_attention_layers)])
         self.dropout_attentions = nn.ModuleList([nn.Dropout(p=dropout) for _ in range(num_attention_layers)])
         
         # 1DCNN
@@ -505,20 +502,26 @@ class AttentionMLPSE1DCNNLayers(nn.Module):
         self.residual_bn = nn.BatchNorm1d(1)
         
         # MLP
-        self.fc1 = nn.Linear(1024, 512)
-        self.bn_fc1 = nn.BatchNorm1d(512)
-        self.se1 = SEBlock(512, reduction)
+        self.fc1 = nn.Linear(hidden_size, 1024)
+        self.bn_fc1 = nn.BatchNorm1d(1024)
+        self.se1 = SEBlock(1024, reduction)
         self.relu1 = nn.LeakyReLU(inplace=True)
         self.dropout1 = nn.Dropout(p=dropout)
         
-        self.fc2 = nn.Linear(512, 256)
-        self.bn_fc2 = nn.BatchNorm1d(256)
-        self.se2 = SEBlock(256, reduction)
+        self.fc2 = nn.Linear(1024, 512)
+        self.bn_fc2 = nn.BatchNorm1d(512)
+        self.se2 = SEBlock(512, reduction)
         self.relu2 = nn.LeakyReLU(inplace=True)
         self.dropout2 = nn.Dropout(p=dropout)
         
-        self.fc3 = nn.Linear(256, 1)
-        self.bn_fc3 = nn.BatchNorm1d(1)
+        self.fc3 = nn.Linear(512, 256)
+        self.bn_fc3 = nn.BatchNorm1d(256)
+        self.se3 = SEBlock(256, reduction)
+        self.relu3 = nn.LeakyReLU(inplace=True)
+        self.dropout3 = nn.Dropout(p=dropout)
+        
+        self.fc4 = nn.Linear(256, 1)
+        self.bn_fc4 = nn.BatchNorm1d(1)
         
         self._init_weights()
     
@@ -551,13 +554,10 @@ class AttentionMLPSE1DCNNLayers(nn.Module):
         Returns:
         - logits: prediction results without Sigmoid activation, shape is [batch_size, 1]
         """
-        # Linear mapping from 4096 to 1024
-        x = self.linear(x)                # [batch_size, num_layers=32, hidden_size=1024]
-        
         # Attention layers
         for i in range(self.num_attention_layers):
-            attn_output, attn_weights = self.attention_layers[i](x, x, x)  # [batch_size, num_layers=32, hidden_size=1024]
-            x = self.attention_norms[i](attn_output + x)
+            attn_output, attn_weights = self.attention_layers[i](x, x, x)  # [batch_size, num_layers=32, hidden_size=4096]
+            x = self.attention_norms[i](attn_output + x)                  # Residual connection
             x = self.dropout_attentions[i](x)
         
         # 1DCNN 
@@ -578,25 +578,32 @@ class AttentionMLPSE1DCNNLayers(nn.Module):
         x = self.leaky_relu(x)
         
         # Flatten
-        x = x.view(x.size(0), -1)                      # [batch_size, 1024]
+        x = x.view(x.size(0), -1)                      # [batch_size, 4096]
         
         # FC1 with SE
-        x = self.fc1(x)                                 # [batch_size, 5]12
+        x = self.fc1(x)                                 # [batch_size, 1024]
         x = self.bn_fc1(x)
         x = self.se1(x)
         x = self.relu1(x)
         x = self.dropout1(x)
         
         # FC2 with SE
-        x = self.fc2(x)                                 # [batch_size, 256]
+        x = self.fc2(x)                                 # [batch_size, 512]
         x = self.bn_fc2(x)
         x = self.se2(x)
         x = self.relu2(x)
         x = self.dropout2(x)
         
         # FC3 with SE
-        x = self.fc3(x)                                 # [batch_size, 1]
-        logits = self.bn_fc3(x)
+        x = self.fc3(x)                                 # [batch_size, 256]
+        x = self.bn_fc3(x)
+        x = self.se3(x)
+        x = self.relu3(x)
+        x = self.dropout3(x)
+        
+        # FC4
+        logits = self.fc4(x)                            # [batch_size, 1]
+        logits = self.bn_fc4(logits)
         
         return logits
 
