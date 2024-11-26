@@ -33,6 +33,79 @@ class SAPLMAClassifier(nn.Module):
         out = self.sigmoid(out)
         return out
     
+class SAPLMAWithCNNRes(nn.Module):
+    def __init__(self, hidden_dim, num_layers):
+        super(SAPLMAWithCNN, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+
+        # CNN
+        self.conv1 = nn.Conv1d(in_channels=num_layers, out_channels=16, kernel_size=7, stride=1, padding=3)
+        self.bn1 = nn.BatchNorm1d(16)
+        self.conv2 = nn.Conv1d(in_channels=16, out_channels=1, kernel_size=5, stride=1, padding=2)
+        self.bn2 = nn.BatchNorm1d(1)
+        self.leaky_relu = nn.LeakyReLU(inplace=True)
+
+        # Residual connection
+        self.residual_conv = nn.Conv1d(in_channels=num_layers, out_channels=1, kernel_size=1)
+        self.residual_bn = nn.BatchNorm1d(1)
+
+        # MLP
+        self.fc1 = nn.Linear(hidden_dim, 1024)  # 4096 -> 1024
+        self.bn_fc1 = nn.BatchNorm1d(1024)
+        self.fc2 = nn.Linear(1024, 512)         # 1024 -> 512
+        self.bn_fc2 = nn.BatchNorm1d(512)
+        self.fc3 = nn.Linear(512, 256)          # 512 -> 256
+        self.bn_fc3 = nn.BatchNorm1d(256)
+        self.fc4 = nn.Linear(256, 1)            # 256 -> 1
+
+        self.dropout = nn.Dropout(p=0.3)
+
+    def forward(self, x):
+        """
+        Forward propagation function.
+        Parameters: - x: input tensor, shape is [batch_size, num_layers=32, hidden_dim=4096]
+        Returns: - logits: prediction results without Sigmoid activation, shape is [batch_size, 1]
+        """
+        # CNN
+        x_main = self.conv1(x)      # [batch_size, 16, 4096]
+        x_main = self.bn1(x_main)
+        x_main = self.leaky_relu(x_main)
+
+        x_main = self.conv2(x_main) # [batch_size, 1, 4096]
+        x_main = self.bn2(x_main)
+        x_main = self.leaky_relu(x_main)
+
+        # Residual connection
+        x_residual = self.residual_conv(x)   # [batch_size, 1, 4096]
+        x_residual = self.residual_bn(x_residual)
+
+        # Adding residuals
+        x = x_main + x_residual              # [batch_size, 1, 4096]
+        x = self.leaky_relu(x)
+
+        # Flatten
+        x = x.view(x.size(0), -1)            # [batch_size, 4096]
+
+        # FC
+        x = self.fc1(x)                       # [batch_size, 1024]
+        x = self.bn_fc1(x)
+        x = self.leaky_relu(x)
+        x = self.dropout(x)
+
+        x = self.fc2(x)                       # [batch_size, 512]
+        x = self.bn_fc2(x)
+        x = self.leaky_relu(x)
+        x = self.dropout(x)
+
+        x = self.fc3(x)                       # [batch_size, 256]
+        x = self.bn_fc3(x)
+        x = self.leaky_relu(x)
+        x = self.dropout(x)
+
+        logits = self.fc4(x)                  # [batch_size, 1]
+        return logits
+    
 
 class SAPLMAWithCNN(nn.Module):
     def __init__(self, hidden_dim, num_layers):
