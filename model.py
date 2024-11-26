@@ -250,3 +250,94 @@ class AttentionMLP(nn.Module):
         out = self.fc4_bn(out)  
                 
         return out
+    
+
+class SEBlock(nn.Module):
+    def __init__(self, channel, reduction=16):
+        super(SEBlock, self).__init__()
+        self.fc1 = nn.Linear(channel, channel // reduction)
+        self.relu = nn.ReLU(inplace=True)
+        self.fc2 = nn.Linear(channel // reduction, channel)
+        self.sigmoid = nn.Sigmoid()
+    
+    def forward(self, x):
+        # x: [batch_size, channel]
+        se = self.fc1(x)
+        se = self.relu(se)
+        se = self.fc2(se)
+        se = self.sigmoid(se)
+        return x * se
+
+class AttentionMLPSE(nn.Module):
+    """
+    Aggregate multiple layers of embeddings and perform classification using the attention mechanism
+    Enhanced with Layer Normalization and SE blocks for improved performance and stability
+    """
+    def __init__(self, hidden_size=4096, num_layers=32, num_heads=8, dropout=0.1):
+        super(AttentionMLPSE, self).__init__()
+        # Attention layer
+        self.attention = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=num_heads, dropout=dropout, batch_first=True)
+        self.attention_norm = nn.LayerNorm(hidden_size)
+        self.dropout_attention = nn.Dropout(p=dropout)
+        
+        # SE Blocks integrated into MLP
+        self.fc1 = nn.Linear(hidden_size, 1024)
+        self.fc1_ln = nn.LayerNorm(1024)
+        self.se1 = SEBlock(1024)
+        self.relu1 = nn.ReLU()
+        self.dropout1 = nn.Dropout(p=dropout)
+        
+        self.fc2 = nn.Linear(1024, 512)
+        self.fc2_ln = nn.LayerNorm(512)
+        self.se2 = SEBlock(512)
+        self.relu2 = nn.ReLU()
+        self.dropout2 = nn.Dropout(p=dropout)
+        
+        self.fc3 = nn.Linear(512, 256)
+        self.fc3_ln = nn.LayerNorm(256)
+        self.se3 = SEBlock(256)
+        self.relu3 = nn.ReLU()
+        self.dropout3 = nn.Dropout(p=dropout)
+        
+        self.fc4 = nn.Linear(256, 1)
+        self.fc4_ln = nn.LayerNorm(1)  
+        
+    def forward(self, x):
+        """
+        x: Tensor (batch_size, num_layers, hidden_size)
+        out: Tensor (batch_size, 1)
+        """
+        # Multi-head Attention with Residual Connection and LayerNorm
+        attn_output, attn_weights = self.attention(x, x, x)  # [batch_size, num_layers, hidden_size]
+        x = self.attention_norm(attn_output + x)  # Residual Connection
+        x = self.dropout_attention(x)
+        
+        # Global Average Pooling
+        pooled_output = x.mean(dim=1)  # [batch_size, hidden_size]
+        
+        # FC1 with SE
+        fc1_out = self.fc1(pooled_output)
+        fc1_out = self.fc1_ln(fc1_out)
+        fc1_out = self.se1(fc1_out)
+        fc1_out = self.relu1(fc1_out)
+        fc1_out = self.dropout1(fc1_out)
+        
+        # FC2 with SE
+        fc2_out = self.fc2(fc1_out)
+        fc2_out = self.fc2_ln(fc2_out)
+        fc2_out = self.se2(fc2_out)
+        fc2_out = self.relu2(fc2_out)
+        fc2_out = self.dropout2(fc2_out)
+        
+        # FC3 with SE
+        fc3_out = self.fc3(fc2_out)
+        fc3_out = self.fc3_ln(fc3_out)
+        fc3_out = self.se3(fc3_out)
+        fc3_out = self.relu3(fc3_out)
+        fc3_out = self.dropout3(fc3_out)
+        
+        # FC4
+        logits = self.fc4(fc3_out)
+        logits = self.fc4_ln(logits)  
+        
+        return logits  
