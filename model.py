@@ -174,25 +174,24 @@ class AttentionMLP(nn.Module):
         self.attention_norm = nn.LayerNorm(hidden_size)
         
         # FC layers without residual connections
-        self.fc1 = nn.Linear(hidden_size, 256)
+        self.fc1 = nn.Linear(hidden_size, 1024)
         self.relu1 = nn.ReLU()
         self.dropout1 = nn.Dropout(p=dropout)
         
-        self.fc2 = nn.Linear(256, 128)
+        self.fc2 = nn.Linear(1024, 512)
         self.relu2 = nn.ReLU()
         self.dropout2 = nn.Dropout(p=dropout)
         
-        self.fc3 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(512, 256)
         self.relu3 = nn.ReLU()
         self.dropout3 = nn.Dropout(p=dropout)
         
-        self.fc4 = nn.Linear(64, 1)        
-        self.sigmoid = nn.Sigmoid()
+        self.fc4 = nn.Linear(256, 1)        
         
         # BN
-        self.fc1_bn = nn.BatchNorm1d(256)
-        self.fc2_bn = nn.BatchNorm1d(128)
-        self.fc3_bn = nn.BatchNorm1d(64)
+        self.fc1_bn = nn.BatchNorm1d(1024)
+        self.fc2_bn = nn.BatchNorm1d(512)
+        self.fc3_bn = nn.BatchNorm1d(256)
         self.fc4_bn = nn.BatchNorm1d(1)
         
         self._init_weights()
@@ -249,7 +248,5 @@ class AttentionMLP(nn.Module):
         # FC4
         out = self.fc4(fc3_out)
         out = self.fc4_bn(out)  
-        
-        out = self.sigmoid(out)
-        
+                
         return out
