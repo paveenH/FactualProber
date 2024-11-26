@@ -437,7 +437,7 @@ def main():
     # model = SAPLMAWithCNNRes(hidden_dim=hidden_size, num_layers=num_layers).to(device)
     # model = AttentionMLP(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
     # model = AttentionMLPSE(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
-    model = AttentionMLPSE1DCNN(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1, reduction=16).to(device)
+    model = AttentionMLPSE1DCNN(hidden_size=hidden_size, num_layers=num_layers, num_heads=4, dropout=0.3, reduction=16).to(device)
     
     model = train_layers(
         model, 
