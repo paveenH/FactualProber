@@ -35,7 +35,7 @@ class SAPLMAClassifier(nn.Module):
     
 class SAPLMAWithCNNRes(nn.Module):
     def __init__(self, hidden_dim, num_layers):
-        super(SAPLMAWithCNN, self).__init__()
+        super(SAPLMAWithCNNRes, self).__init__()
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
 
