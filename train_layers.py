@@ -21,7 +21,7 @@ from sklearn.metrics import roc_curve, auc, accuracy_score
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from model import SAPLMAWithCNNRes, AttentionMLP, AttentionMLPSE, AttentionMLPSE1DCNN, AttentionMLPSE2DCNN
+from model import SAPLMAWithCNNRes, AttentionMLP, AttentionMLPSE, AttentionMLPSE1DCNN, AttentionMLPSE2DCNN, AttentionMLPSE1DCNNLayers
 from utils import load_config, get_free_gpu, load_data
 
 def compute_roc_auc(y_true, y_scores):
@@ -437,7 +437,16 @@ def main():
     # model = AttentionMLP(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
     # model = AttentionMLPSE(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
     # model = AttentionMLPSE1DCNN(hidden_size=hidden_size, num_layers=num_layers, num_heads=4, dropout=0.3, reduction=16).to(device)
-    model = AttentionMLPSE2DCNN(hidden_size=hidden_size, num_layers=num_layers, num_heads=4, dropout=0.3, reduction=16).to(device)
+    # model = AttentionMLPSE2DCNN(hidden_size=hidden_size, num_layers=num_layers, num_heads=4, dropout=0.3, reduction=16).to(device)
+    model = AttentionMLPSE1DCNNLayers(
+        hidden_size=hidden_size, 
+        num_layers=num_layers, 
+        num_heads=4, 
+        dropout=0.3, 
+        reduction=16, 
+        num_attention_layers=2
+        ).to(device)
+    
     
     model = train_layers(
         model, 
