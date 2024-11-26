@@ -173,7 +173,7 @@ class AttentionMLP(nn.Module):
         self.attention = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=num_heads, dropout=dropout, batch_first=True)
         self.attention_norm = nn.LayerNorm(hidden_size)
         
-        # FC layers without residual connections
+        # FC layers 
         self.fc1 = nn.Linear(hidden_size, 1024)
         self.relu1 = nn.ReLU()
         self.dropout1 = nn.Dropout(p=dropout)
@@ -282,25 +282,27 @@ class AttentionMLPSE(nn.Module):
         
         # SE Blocks integrated into MLP
         self.fc1 = nn.Linear(hidden_size, 1024)
-        self.fc1_ln = nn.LayerNorm(1024)
         self.se1 = SEBlock(1024)
         self.relu1 = nn.ReLU()
         self.dropout1 = nn.Dropout(p=dropout)
         
         self.fc2 = nn.Linear(1024, 512)
-        self.fc2_ln = nn.LayerNorm(512)
         self.se2 = SEBlock(512)
         self.relu2 = nn.ReLU()
         self.dropout2 = nn.Dropout(p=dropout)
         
         self.fc3 = nn.Linear(512, 256)
-        self.fc3_ln = nn.LayerNorm(256)
         self.se3 = SEBlock(256)
         self.relu3 = nn.ReLU()
         self.dropout3 = nn.Dropout(p=dropout)
         
         self.fc4 = nn.Linear(256, 1)
-        self.fc4_ln = nn.LayerNorm(1)  
+        
+        # BN
+        self.fc1_bn = nn.BatchNorm1d(1024)
+        self.fc2_bn = nn.BatchNorm1d(512)
+        self.fc3_bn = nn.BatchNorm1d(256)
+        self.fc4_bn = nn.BatchNorm1d(1)
         
     def forward(self, x):
         """
@@ -317,27 +319,27 @@ class AttentionMLPSE(nn.Module):
         
         # FC1 with SE
         fc1_out = self.fc1(pooled_output)
-        fc1_out = self.fc1_ln(fc1_out)
+        fc1_out = self.fc1_bn(fc1_out)
         fc1_out = self.se1(fc1_out)
         fc1_out = self.relu1(fc1_out)
         fc1_out = self.dropout1(fc1_out)
         
         # FC2 with SE
         fc2_out = self.fc2(fc1_out)
-        fc2_out = self.fc2_ln(fc2_out)
+        fc2_out = self.fc2_bn(fc2_out)
         fc2_out = self.se2(fc2_out)
         fc2_out = self.relu2(fc2_out)
         fc2_out = self.dropout2(fc2_out)
         
         # FC3 with SE
         fc3_out = self.fc3(fc2_out)
-        fc3_out = self.fc3_ln(fc3_out)
+        fc3_out = self.fc3_bn(fc3_out)
         fc3_out = self.se3(fc3_out)
         fc3_out = self.relu3(fc3_out)
         fc3_out = self.dropout3(fc3_out)
         
         # FC4
         logits = self.fc4(fc3_out)
-        logits = self.fc4_ln(logits)  
+        logits = self.fc4_bn(logits)  
         
         return logits  
