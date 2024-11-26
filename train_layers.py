@@ -444,7 +444,7 @@ def main():
         num_heads=4, 
         dropout=0.3, 
         reduction=16, 
-        num_attention_layers=2
+        num_attention_layers=1
         ).to(device)
     
     
