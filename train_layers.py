@@ -22,7 +22,7 @@ from sklearn.metrics import roc_curve, auc, accuracy_score
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from model import SAPLMAWithCNNRes, AttentionMLP, AttentionMLPSE
+from model import SAPLMAWithCNNRes, AttentionMLP, AttentionMLPSE, AttentionMLPSE1DCNN
 from utils import load_config, get_free_gpu, load_data
 
 def compute_roc_auc(y_true, y_scores):
@@ -436,7 +436,8 @@ def main():
     # model = SAPLMAWithCNN(hidden_dim=hidden_size, num_layers=num_layers).to(device)
     # model = SAPLMAWithCNNRes(hidden_dim=hidden_size, num_layers=num_layers).to(device)
     # model = AttentionMLP(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
-    model = AttentionMLPSE(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
+    # model = AttentionMLPSE(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1).to(device)
+    model = AttentionMLPSE1DCNN(hidden_size=hidden_size, num_layers=num_layers, num_heads=8, dropout=0.1, reduction=16).to(device)
     
     model = train_layers(
         model, 
@@ -445,10 +446,10 @@ def main():
         val_embeddings, 
         val_labels, 
         device, 
-        epochs=12,  
+        epochs=20,  
         batch_size=32, 
         learning_rate=0.005, 
-        early_stopping_patience=4  
+        early_stopping_patience=5  
         )
     
     # Evaluate on validation set to find optimal threshold
